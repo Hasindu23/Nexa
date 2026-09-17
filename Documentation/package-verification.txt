@@ -1,0 +1,9 @@
+Nexa 0.3.0 universal release verification
+Application architectures: arm64 x86_64
+Media helper architectures: arm64 x86_64
+macOS deployment target: 15.0
+Local code signature: verified with --deep --strict
+Apple Developer ID / notarization: not included
+XCTest: 31 passed, zero failures
+Native smoke checks: passed on notched and simulated notch-free layouts
+Motion stress sequence: passed
