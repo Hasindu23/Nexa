@@ -119,6 +119,7 @@ struct NotchView: View {
         case .reminders: RemindersView(service: model.calendar, accent: accent)
         case .timers: TimersView(service: model.timers, accent: accent)
         case .controls: ControlsView(service: model.controls, accent: accent)
+        case .storage: StorageLauncherView(open: { model.showStorage?() })
         case .system: SystemStatsView(service: model.system, accent: accent)
         case .bluetooth: BluetoothView(service: model.bluetooth)
         case .weather: WeatherView(service: model.weather, preferences: preferences, settings: { model.showSettings?() })

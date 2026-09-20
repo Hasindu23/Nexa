@@ -1,0 +1,8 @@
+Nexa 0.4.2 — September 20, 2026
+31 Nexa tests passed.
+27 Storage Cleaner tests passed.
+58 total tests; zero failures.
+Release build succeeded for arm64 and x86_64.
+Strict code-signature verification passed.
+Disk-image checksum verification passed.
+Generated test fixtures only; no personal files cleaned.

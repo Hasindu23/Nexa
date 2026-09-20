@@ -27,6 +27,11 @@ import Darwin
         }
         refreshBattery()
     }
+    deinit {
+        // IOKit stores an unretained context. Remove its source before that context expires.
+        if let powerSource { CFRunLoopSourceInvalidate(powerSource) }
+        timer?.invalidate()
+    }
     func setVisible(_ visible: Bool) {
         timer?.invalidate(); timer = nil
         guard visible else { return }; sample()
