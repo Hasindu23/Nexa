@@ -15,12 +15,16 @@ import Combine
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var model: AppModel!
     var notch: NotchWindowController!
+    var storageWindow: NSWindow?
     var settingsWindow: NSWindow?
     var onboardingWindow: NSWindow?
     var statusItem: NSStatusItem?
     private var subscriptions = Set<AnyCancellable>()
     func applicationDidFinishLaunching(_ notification: Notification) {
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
+        if let index = CommandLine.arguments.firstIndex(of: "--qa-storage"), CommandLine.arguments.count > index + 1 {
+            runStorageQA(output: URL(fileURLWithPath: CommandLine.arguments[index + 1])); return
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--qa-motion"), CommandLine.arguments.count > index + 1 {
             runMotionQA(output: URL(fileURLWithPath: CommandLine.arguments[index + 1])); return
         }
@@ -32,11 +36,20 @@ import Combine
         }
         // Launching another mounted copy must not add a second notch overlay.
         if let existing = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "app.nexa.mac").first(where: { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier && !$0.isTerminated }) {
-            existing.activate(); NSApp.terminate(nil); return
+            if let url = existing.bundleURL {
+                let configuration = NSWorkspace.OpenConfiguration()
+                configuration.activates = true; configuration.createsNewApplicationInstance = false
+                // Deliver a real reopen event; activate() alone cannot restore a closed window.
+                NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in
+                    DispatchQueue.main.async { NSApp.terminate(nil) }
+                }
+            } else { existing.activate(); NSApp.terminate(nil) }
+            return
         }
         model = AppModel(); setup()
-        if !model.preferences.value.completedOnboarding { showOnboarding() }
-        else if CommandLine.arguments.contains("--settings") { showSettings() }
+        if CommandLine.arguments.contains("--settings") { showSettings() }
+        else if CommandLine.arguments.contains("--storage") { showStorage() }
+        else if !CommandLine.arguments.contains("--background") { showPrimaryWindow() }
         if CommandLine.arguments.contains("--expanded") {
             // Give the initially hidden SwiftUI hosts their first display pass.
             // Opening in the launch callback can leave unchanged subviews blank.
@@ -46,6 +59,7 @@ import Combine
     func setup() {
         let simulatedDisplay = model.testing && CommandLine.arguments.contains("--qa-no-notch") ? NSScreen.main.map { NotchGeometry(frame: $0.frame, hardwareWidth: 170, hardwareHeight: 0) } : nil
         notch = NotchWindowController(model: model, geometryOverride: simulatedDisplay); notch.show()
+        model.showStorage = { [weak self] in self?.showStorage() }
         model.showSettings = { [weak self] in self?.showSettings() }
         model.showOnboarding = { [weak self] in self?.showOnboarding() }
         configureStatusItem()
@@ -65,6 +79,7 @@ import Combine
         add(model.paused ? "Resume Nexa" : "Pause Nexa", action: #selector(pause), key: "", menu: menu)
         let awake = add("Keep Awake", action: #selector(keepAwake), key: "", menu: menu); awake.state = model.controls.awake ? .on : .off
         menu.addItem(.separator())
+        add("Storage Cleaner…", action: #selector(showStorage), key: "", menu: menu)
         add("Settings…", action: #selector(showSettings), key: ",", menu: menu)
         add("Quit Nexa", action: #selector(quit), key: "q", menu: menu)
     }
@@ -82,6 +97,20 @@ import Combine
     @objc func pause() { model.togglePause() }
     @objc func keepAwake() { model.controls.toggleAwake() }
     @objc func quit() { NSApp.terminate(nil) }
+    func showPrimaryWindow() {
+        guard model != nil else { return }
+        if model.preferences.value.completedOnboarding { showStorage() } else { showOnboarding() }
+    }
+    @objc func showStorage() {
+        if storageWindow == nil {
+            storageWindow = makeWindow(title: "Nexa Hub · Storage Cleaner", width: 1220, height: 860)
+            storageWindow?.minSize = NSSize(width: 1040, height: 720)
+            storageWindow?.contentView = NSHostingView(rootView: StorageCleanerView(service: model.storage))
+            if !model.testing { storageWindow?.setFrameAutosaveName("Nexa.StorageCleaner") }
+        }
+        if let window = storageWindow { present(window) }
+        model.storage.opened()
+    }
     @objc func showSettings() {
         if settingsWindow == nil {
             settingsWindow = makeWindow(title: "Nexa Settings", width: 860, height: 720)
@@ -89,7 +118,7 @@ import Combine
             settingsWindow?.contentView = NSHostingView(rootView: SettingsView(model: model, preferences: model.preferences))
             if !model.testing { settingsWindow?.setFrameAutosaveName("Nexa.Settings") }
         }
-        model.controls.refresh(); settingsWindow?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        model.controls.refresh(); if let window = settingsWindow { present(window) }
     }
     func showOnboarding() {
         if onboardingWindow == nil {
@@ -98,14 +127,25 @@ import Combine
                 guard let self else { return }; self.model.preferences.value.completedOnboarding = true; self.onboardingWindow?.close(); self.onboardingWindow = nil; self.notch.expand(true)
             }))
         }
-        onboardingWindow?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        if let window = onboardingWindow { present(window) }
+    }
+    func present(_ window: NSWindow) {
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        if let screen = window.screen ?? NSScreen.main {
+            let bounds = screen.visibleFrame
+            var frame = window.frame
+            frame.origin.x = min(max(frame.minX, bounds.minX), max(bounds.minX, bounds.maxX - frame.width))
+            frame.origin.y = min(max(frame.minY, bounds.minY), max(bounds.minY, bounds.maxY - frame.height))
+            if frame != window.frame { window.setFrame(frame, display: true) }
+        }
+        NSApp.unhide(nil); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
     func makeWindow(title: String, width: CGFloat, height: CGFloat, resizable: Bool = true) -> NSWindow {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height), styleMask: resizable ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = title; window.titlebarAppearsTransparent = true; window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false; window.backgroundColor = NSColor(NexaStyle.canvas); window.center(); return window
     }
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showPrimaryWindow(); return true }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationWillTerminate(_ notification: Notification) { model?.shutdown() }
 }

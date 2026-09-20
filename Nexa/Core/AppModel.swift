@@ -10,6 +10,8 @@ struct ActivityBanner: Identifiable {
 
 @MainActor final class AppModel: ObservableObject {
     let preferences: PreferencesStore
+    let storage: StorageService
+    var showStorage: (() -> Void)?
     let files: FileShelfService
     let clipboard: ClipboardService
     let mirror = MirrorService()
@@ -46,6 +48,7 @@ struct ActivityBanner: Identifiable {
     init(preferences: PreferencesStore? = nil, store: LocalStore = LocalStore(), testing: Bool = false) {
         let preferences = preferences ?? PreferencesStore()
         self.preferences = preferences; self.testing = testing
+        storage = StorageService(store: store, testing: testing)
         notebook = NotebookService(store: store); shortcuts = ShortcutsService(store: store)
         files = FileShelfService(store: store); clipboard = ClipboardService(store: store)
         files.onAdded = { [weak self] count in self?.notify("Ready when you are", detail: "\(count) \(count == 1 ? "file" : "files") added to your shelf", icon: "tray.and.arrow.down", priority: true) }
@@ -128,5 +131,5 @@ struct ActivityBanner: Identifiable {
         }
         calendarAlert = work; DispatchQueue.main.asyncAfter(deadline: .now() + max(0, event.startDate.timeIntervalSinceNow - 300), execute: work)
     }
-    func shutdown() { visibleRefresh?.cancel(); mirror.stop(); notebook.save(); shortcuts.cancel(); media.stop(); clipboard.stop(); timers.stop(); system.setVisible(false); controls.stop(); bluetooth.stop(); weather.cancel(); ai.cancel(); updater.cancel(); housekeeping?.invalidate(); calendarAlert?.cancel() }
+    func shutdown() { storage.stop(); visibleRefresh?.cancel(); mirror.stop(); notebook.save(); shortcuts.cancel(); media.stop(); clipboard.stop(); timers.stop(); system.setVisible(false); controls.stop(); bluetooth.stop(); weather.cancel(); ai.cancel(); updater.cancel(); housekeeping?.invalidate(); calendarAlert?.cancel() }
 }

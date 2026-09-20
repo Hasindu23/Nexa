@@ -4,3 +4,11 @@ build/
 *.xcuserstate
 xcuserdata/
 *.xcresult
+*.xcarchive/
+*.app/
+*.dmg
+*.zip
+.env
+.env.*
+*.p12
+*.p8

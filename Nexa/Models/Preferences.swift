@@ -2,7 +2,7 @@ import SwiftUI
 import Combine
 
 enum ModuleID: String, CaseIterable, Codable, Identifiable {
-    case home, music, files, notes, todos, shortcuts, mirror, clipboard, calendar, reminders, timers, controls, system, bluetooth, weather, ai
+    case home, music, files, notes, todos, shortcuts, mirror, clipboard, calendar, reminders, timers, controls, system, storage, bluetooth, weather, ai
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -19,6 +19,7 @@ enum ModuleID: String, CaseIterable, Codable, Identifiable {
         case .timers: return "Timers"
         case .controls: return "Quick Controls"
         case .system: return "System"
+        case .storage: return "Storage Cleaner"
         case .bluetooth: return "Bluetooth"
         case .weather: return "Weather"
         case .ai: return "Assistant"
@@ -39,6 +40,7 @@ enum ModuleID: String, CaseIterable, Codable, Identifiable {
         case .timers: return "timer"
         case .controls: return "slider.horizontal.3"
         case .system: return "chart.bar.xaxis"
+        case .storage: return "externaldrive"
         case .bluetooth: return "headphones"
         case .weather: return "cloud.sun"
         case .ai: return "sparkles"
