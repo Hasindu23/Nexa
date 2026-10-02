@@ -1,0 +1,22 @@
+{
+  "version": "0.5.0",
+  "build": 9,
+  "architectures": [
+    "arm64",
+    "x86_64"
+  ],
+  "automatedTests": 71,
+  "failedTests": 0,
+  "nativeStorageSmoke": "passed",
+  "nativeAppSmoke": "passed",
+  "nativeNoNotchSmoke": "passed",
+  "strictCodeSignature": "passed",
+  "dmgIntegrity": "passed",
+  "dmgMatchesInstalledApp": true,
+  "sha256": "1f5caa06282877987594b8f7f26af48c1a2216a73cef85fe65e6ec10d0b6b73f",
+  "appleNotarized": false,
+  "personalFilesDeleted": false,
+  "nativeLiveHomeScan": "passed with visible partial totals at entry limit",
+  "nativeFocusedFolderScan": "passed",
+  "nativeSnapshotInventory": "passed; read-only"
+}

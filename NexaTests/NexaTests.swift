@@ -273,7 +273,7 @@ final class NexaTests: XCTestCase {
         XCTAssertEqual(surface.compactHost.layer?.opacity, 1)
         try await Task.sleep(for: .milliseconds(450))
         XCTAssertFalse(model.expanded); XCTAssertFalse(controller.transitionInFlight)
-        XCTAssertEqual(controller.window?.frame.height, max(30, controller.window?.screen?.safeAreaInsets.top ?? 0))
+        XCTAssertEqual(controller.window?.frame.height, ceil(max(30, controller.window?.screen?.safeAreaInsets.top ?? 0)))
     }
 
     @MainActor func testBannersAndSlowAnimationRetargetWithoutMovingCameraCenter() async throws {
@@ -290,7 +290,7 @@ final class NexaTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(800))
         let window = try XCTUnwrap(controller.window)
         XCTAssertEqual(window.frame.midX, center)
-        XCTAssertEqual(window.frame.height, max(30, window.screen?.safeAreaInsets.top ?? 0))
+        XCTAssertEqual(window.frame.height, ceil(max(30, window.screen?.safeAreaInsets.top ?? 0)))
         XCTAssertFalse(controller.transitionInFlight)
     }
 
@@ -372,6 +372,15 @@ final class NexaTests: XCTestCase {
         XCTAssertFalse(path.contains(CGPoint(x: 169, y: 1)))
         XCTAssertTrue(path.contains(CGPoint(x: 85, y: 1)))
         XCTAssertTrue(path.contains(CGPoint(x: 85, y: 15)))
+    }
+
+    func testFractionalCutoutHeightPreservesThePhysicalTopEdge() {
+        let geometry = NotchGeometry(frame: NSRect(x: 0, y: 0, width: 1710, height: 1112), hardwareWidth: 208, hardwareHeight: 37.5)
+        let frame = geometry.frame(expanded: false, banner: false, preferences: AppPreferences())
+        XCTAssertEqual(frame.height, 38)
+        XCTAssertEqual(frame.minY, 1074)
+        XCTAssertEqual(frame.maxY, 1112)
+        XCTAssertEqual(frame.midX, 855)
     }
 
 }

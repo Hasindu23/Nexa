@@ -1,0 +1,9 @@
+Nexa Storage Cleaner native smoke check
+PASS: temporary fixtures scanned and SHA-256 duplicate group verified
+PASS: full native Storage Cleaner window rendered
+PASS: exact-item review opens and original remains untouched
+PASS: native category navigation renders after a mouse event
+PASS: second permanent-deletion confirmation renders; original remains untouched
+PASS: app-icon reopen restores closed, minimized and off-screen windows
+PASS: hidden SSD explorer renders, measures hidden folders, handles a native folder click and drills into a cache without selecting or deleting files
+Screenshots use a labeled QA fixture of generated temporary files. No real user file was cleaned.

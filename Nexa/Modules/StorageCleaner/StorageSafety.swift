@@ -7,9 +7,10 @@ struct StoragePathPolicy: Sendable {
     var additional: [String] = []
     var ignored: [String] = []
     var protectedPaths: [String] {
-        ["/System", "/Library", "/Applications", "/bin", "/sbin", "/usr", "/etc", "/private/etc", "/private/var/db", "/dev"] +
+        ["/System", "/Library", "/Applications", "/bin", "/sbin", "/usr", "/etc", "/private/etc", "/private/var/db", "/private/var/vm", "/dev"] +
         ["Documents", "Desktop", "Pictures", "Movies", "Music", "Library/Keychains", "Library/Mail", "Library/Messages", "Library/Application Support/Nexa",
-         "Library/Safari", "Library/Containers/com.apple.Safari", "Library/Application Support/Google/Chrome", "Library/Application Support/Microsoft Edge", "Library/Application Support/Firefox"].map { home.appendingPathComponent($0).path } + additional
+         "Library/Safari", "Library/Application Support", "Library/Containers", "Library/Group Containers",
+         ".ssh", ".gnupg", ".aws", ".azure", ".kube", ".config", ".docker", ".ollama"].map { home.appendingPathComponent($0).path } + additional
     }
     static func contains(_ parent: String, _ child: String) -> Bool { child == parent || child.hasPrefix(parent == "/" ? "/" : parent + "/") }
     func validateSyntax(_ path: String) throws {
@@ -22,7 +23,7 @@ struct StoragePathPolicy: Sendable {
         if protectedPaths.contains(where: { Self.contains($0, path) }) { return true }
         // Mounted copies of macOS and application bundles are never cleanup targets.
         let parts = path.split(separator: "/").map(String.init)
-        if parts.contains(where: { $0.hasSuffix(".app") || $0.hasSuffix(".photoslibrary") || $0.hasSuffix(".backupdb") }) { return true }
+        if parts.contains(where: { $0 == ".git" || $0.hasSuffix(".app") || $0.hasSuffix(".photoslibrary") || $0.hasSuffix(".backupdb") }) { return true }
         if parts.first == "Volumes", parts.count >= 3, ["System", "Library", "Applications", "usr", "private"].contains(parts[2]) { return true }
         return false
     }

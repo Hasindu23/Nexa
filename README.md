@@ -2,11 +2,11 @@
 
 **A little more space.** An original native macOS notch companion built with Swift, SwiftUI and AppKit. No Electron, accounts, analytics, license checks or runtime downloads.
 
-![Storage Cleaner, running with generated QA fixtures](Documentation/GitHub-QA/storage-overview.png)
+![Disk Space Explorer, running with generated QA fixtures](Documentation/Explorer-QA/disk-explorer-overview.png)
 
-Version **0.4.2** adds a dedicated **Storage Cleaner** window, available from the Nexa menu bar menu or the Storage Cleaner widget. See the [Storage Cleaner guide and verified scope](Documentation/STORAGE-CLEANER.md) and [validation report](Documentation/STORAGE-VALIDATION.md).
+Version **0.5.0** adds **Disk Space Explorer** inside Storage Cleaner: a folder map with hidden Library/dot folders, largest-file search, metadata-only analysis and separate snapshot inventory. See the [Disk Space Explorer guide](Documentation/DISK-EXPLORER.md). Storage Cleaner is available from the Nexa menu bar menu or its widget. See the [Storage Cleaner guide and verified scope](Documentation/STORAGE-CLEANER.md) and [validation report](Documentation/STORAGE-VALIDATION.md).
 
-Install Nexa at **`/Applications/Nexa.app`**. A normal icon launch opens a visible Nexa window, and reopening restores closed, minimized or off-screen windows. Repeat launches reuse the running instance. See [final release and installation verification](Documentation/FINAL-0.4.2.md).
+Install Nexa at **`/Applications/Nexa.app`**. A normal icon launch opens a visible Nexa window, and reopening restores closed, minimized or off-screen windows. Repeat launches reuse the running instance. See the [0.5.0 validation and release notes](Documentation/FINAL-0.5.0.md).
 
 The existing notch companion remains included. Version 0.3.0 introduced the earlier polish pass. It adds quicker hover response, uninterrupted menu opening, widget crossfades and consistent button feedback. Device reads and media decoding run away from the interface thread. Inactive layers no longer intercept clicks or create duplicate share pickers; Reduce Motion takes effect during an active transition. Existing custom gesture timing, permissions and saved data are preserved.
 
@@ -20,7 +20,7 @@ The Storage Cleaner screenshot is rendered by the running app using generated QA
 
 ## Start using it
 
-1. Quit any older running Nexa, download **Nexa-Final-0.4.2.dmg** from [GitHub Releases](https://github.com/Hasindu23/Nexa/releases/tag/v0.4.2), drag **Nexa** to **Applications**, then open it.
+1. Quit any older running Nexa, open the supplied **Nexa-Final-0.5.0.dmg**, drag **Nexa** to **Applications**, then open it.
 2. Follow the welcome flow or select **Set up later**. No private-data permission is requested automatically.
 3. Hover over or click the top-center notch. On a Mac without a notch, use the top pill.
 4. Use the waveform menu bar icon for Open Nexa, Pause, Keep Awake, Settings and Quit.
@@ -111,7 +111,7 @@ See [architecture](Documentation/ARCHITECTURE.md), [permissions and privacy](Doc
 
 The temporary product name is Nexa and the bundle ID is `app.nexa.mac`. Change the generator’s product/bundle settings, Info.plist display metadata, visible strings, UserDefaults/application-support namespace and Keychain service name together before distributing a renamed app. Changing storage identifiers creates a separate data store; plan a migration if existing user data should be preserved.
 
-Source and releases are hosted at [Hasindu23/Nexa](https://github.com/Hasindu23/Nexa). About includes the repository link and the configurable release feed. Updates are checked only when requested and allowed by Local-only mode. The release feed uses:
+Source and releases are hosted at [Hasindu23/Nexa](https://github.com/Hasindu23/Nexa). About includes the repository link and the configurable release feed. Updates are checked only when requested and allowed by Local-only mode. The published release feed currently uses:
 
 ```json
 {"version":"0.4.2","url":"https://github.com/Hasindu23/Nexa/releases/tag/v0.4.2"}

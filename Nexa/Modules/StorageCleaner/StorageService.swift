@@ -17,6 +17,7 @@ import Combine
     let home: URL
     let deviceID: String
     let engine: StorageEngine
+    let explorer: DiskExplorerService
     private let store: LocalStore
     private var worker: Task<StorageScan, Error>?
     private var cleanupWorker: Task<CleanupReceipt, Error>?
@@ -30,6 +31,7 @@ import Combine
     var recommendations: [StorageItem] { scan?.items.filter { $0.recommended && $0.eligible && $0.duplicateHash == nil } ?? [] }
     init(store: LocalStore, home: URL = FileManager.default.homeDirectoryForCurrentUser, testing: Bool = false) {
         self.store = store; self.home = home; self.testing = testing
+        explorer = DiskExplorerService(home: home)
         deviceID = testing ? "QA Mac" : Host.current().localizedName ?? "This Mac"
         let settings = store.read(StorageSettings.self, name: "storage-settings.json") ?? StorageSettings()
         self.settings = settings
@@ -159,6 +161,7 @@ import Combine
             catch { self.error = error.localizedDescription }
             cleanupWorker = nil; cleaning = false; busy = false; selection.removeAll(); scan = nil
             // A fresh filesystem inventory follows every attempted operation.
+            explorer.invalidate()
             let operationError = self.error; startScan(); if let operationError { self.error = operationError }
         }
     }
@@ -171,6 +174,7 @@ import Combine
             do { lastReceipt = try await task.value; history = await engine.receipts() }
             catch { self.error = error.localizedDescription }
             cleanupWorker = nil; cleaning = false; busy = false; scan = nil
+            explorer.invalidate()
             let recoveryError = self.error; startScan(); if let recoveryError { self.error = recoveryError }
         }
     }
@@ -195,6 +199,15 @@ import Combine
               now.timeIntervalSince(settings.lastScheduledScan ?? now) >= Double(settings.scheduleDays) * 86400 else { return }
         settings.lastScheduledScan = now; saveSettings(); startScan()
     }
-    func stop() { worker?.cancel(); cleanupWorker?.cancel(); scheduler?.invalidate() }
+    func reviewFromExplorer(_ category: StorageCategory) {
+        guard !busy, !explorer.busy else { return }
+        configure {
+            if category == .downloads { $0.scanDownloads = true }
+            if category == .docker { $0.includeDocker = true }
+            if category == .models { $0.includeOllama = true }
+        }
+        destination = category.rawValue; action = .trash; startScan()
+    }
+    func stop() { explorer.cancel(); worker?.cancel(); cleanupWorker?.cancel(); scheduler?.invalidate() }
     func loadFixture(_ result: StorageScan) async { await engine.accept(result); scan = result; status = "QA fixture · no personal files" }
 }

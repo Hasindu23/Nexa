@@ -41,13 +41,14 @@ struct StorageCleanerView: View {
                         if let error = service.error { notice(error, icon: "exclamationmark.triangle", color: .orange) }
                         if let receipt = service.lastReceipt { resultCard(receipt) }
                         if page == "overview" { overview }
+                        else if page == "explorer" { DiskExplorerView(explorer: service.explorer, storage: service) }
                         else if page == "history" { history }
                         else if page == "safety" { safety }
                         else if page == "devices" { devices }
                         else { detail }
                     }.padding(28)
                 }
-                footer
+                if page != "explorer" { footer }
             }
         }
         .frame(minWidth: 1040, minHeight: 700)
@@ -61,7 +62,7 @@ struct StorageCleanerView: View {
                 Text(item.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             }.padding(22)
         }
-        .onAppear { service.opened() }
+        .onAppear { if page != "explorer" { service.opened() } }
         .onChange(of: page) { _, _ in search = ""; age = 0; minimumMB = page == "largeFiles" ? "100" : "0"; shown = 200; useAccessDate = false }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: page)
     }
@@ -72,6 +73,7 @@ struct StorageCleanerView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     nav("overview", "Overview", "square.grid.2x2")
                     nav("recommended", "Recommended", "sparkle")
+                    nav("explorer", "Disk space explorer", "chart.pie")
                     sidebarLabel("STORAGE")
                     ForEach(StorageCategory.allCases.filter { ![.leftovers, .applications].contains($0) }) { item in nav(item.rawValue, item.title, item.icon) }
                     nav("duplicates", "Duplicate finder", "square.on.square")
@@ -102,7 +104,7 @@ struct StorageCleanerView: View {
             }
             Spacer()
             if service.busy { ProgressView().controlSize(.small); Button("Cancel") { service.cancel() }.buttonStyle(CapsuleButtonStyle()) }
-            else { Button { service.startScan() } label: { Label("Scan storage", systemImage: "arrow.clockwise") }.buttonStyle(CapsuleButtonStyle(accent: CleanerStyle.blue)).accessibilityIdentifier("storage.scan") }
+            else if page != "explorer" { Button { service.startScan() } label: { Label("Scan storage", systemImage: "arrow.clockwise") }.buttonStyle(CapsuleButtonStyle(accent: CleanerStyle.blue)).accessibilityIdentifier("storage.scan") }
         }.padding(.horizontal, 29).padding(.top, 24).padding(.bottom, 20)
     }
     private var overview: some View {
@@ -136,6 +138,9 @@ struct StorageCleanerView: View {
                 }.padding(8)
             }
             HStack { Text("Explore your storage").font(.system(size: 16, weight: .semibold)); Spacer(); Text("Measured scan results").font(.system(size: 10)).foregroundStyle(CleanerStyle.muted) }
+            Button { page = "explorer" } label: {
+                HStack(spacing: 16) { Image(systemName: "chart.pie.fill").font(.title2); VStack(alignment: .leading, spacing: 4) { Text("Explore hidden SSD storage").font(.system(size: 15, weight: .semibold)); Text("Library, app data, hidden folders and large files. See what’s using space before you clean.").font(.system(size: 11)).foregroundStyle(CleanerStyle.muted) }; Spacer(); Image(systemName: "arrow.up.right") }.padding(20).foregroundStyle(CleanerStyle.blue).frame(maxWidth: .infinity, alignment: .leading).background(CleanerStyle.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 15))
+            }.buttonStyle(.plain)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                 ForEach([StorageCategory.caches, .downloads, .developer, .docker, .models, .largeFiles]) { category in categoryCard(category) }
             }

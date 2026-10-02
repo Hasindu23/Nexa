@@ -7,7 +7,7 @@ extension AppDelegate {
         let suite = "app.nexa.qa.storage.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let scratch = SecureStorageFS.temporaryDirectory.appendingPathComponent(suite)
-        model = AppModel(preferences: PreferencesStore(defaults: defaults), store: LocalStore(root: scratch.appendingPathComponent("State")), testing: true)
+        model = AppModel(preferences: PreferencesStore(defaults: defaults), store: LocalStore(root: scratch.appendingPathComponent("State")), testing: true, storageHome: scratch)
         model.preferences.value.completedOnboarding = true
         Task { @MainActor in
             var checks: [String] = []
@@ -38,9 +38,9 @@ extension AppDelegate {
                 model.storage.plan = nil
                 try await Task.sleep(for: .milliseconds(700))
                 // Exercise native sidebar hit testing, without private accessibility permissions.
-                storageClick(window, NSPoint(x: 94, y: window.contentView!.bounds.height - 250))
+                storageClick(window, NSPoint(x: 94, y: window.contentView!.bounds.height - 290))
                 try await Task.sleep(for: .milliseconds(350))
-                guard model.storage.destination != "overview" else { throw StorageFailure.blocked("Native sidebar click did not navigate.") }
+                guard model.storage.destination == "downloads" else { throw StorageFailure.blocked("Native sidebar click did not navigate to Downloads.") }
                 try storageSnapshot(window, output.appendingPathComponent("storage-category.png"))
                 checks.append("PASS: native category navigation renders after a mouse event")
                 model.storage.action = .permanent; model.storage.review()
@@ -65,6 +65,25 @@ extension AppDelegate {
                 showPrimaryWindow()
                 guard NSScreen.screens.contains(where: { $0.visibleFrame.intersects(window.frame) }) else { throw StorageFailure.blocked("Main window remained outside all displays.") }
                 checks.append("PASS: app-icon reopen restores closed, minimized and off-screen windows")
+                for (path, size) in [(".npm/_cacache/content-v2/cache", 8_000_000), ("Library/Application Support/Creative App/projects.db", 12_000_000), ("Library/Application Support/MobileSync/Backup/Fixture/backup.bin", 6_000_000), (".ollama/models/blobs/model", 10_000_000), ("Library/Developer/Xcode/DerivedData/Build/objects.bin", 4_000_000), ("Movies/Project.mov", 16_000_000)] {
+                    let url = scratch.appendingPathComponent(path)
+                    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try Data(repeating: 37, count: size).write(to: url)
+                }
+                let disk = try await Task.detached(priority: .utility) { try DiskExplorerScanner.scan(root: scratch) }.value
+                model.storage.selection.removeAll()
+                model.storage.explorer.loadFixture(disk); model.storage.destination = "explorer"
+                try await Task.sleep(for: .milliseconds(700))
+                try storageSnapshot(window, output.appendingPathComponent("disk-explorer-overview.png"))
+                guard disk.measured.files >= 10, disk.entries[scratch.appendingPathComponent(".npm").path]?.hidden == true else { throw StorageFailure.blocked("Hidden folder inventory is incomplete.") }
+                storageClick(window, NSPoint(x: 620, y: window.contentView!.bounds.height - 586))
+                try await Task.sleep(for: .milliseconds(350))
+                guard model.storage.explorer.current == scratch.appendingPathComponent("Library").path else { throw StorageFailure.blocked("Native explorer folder click did not drill down.") }
+                model.storage.explorer.navigate(scratch.appendingPathComponent(".npm/_cacache").path)
+                try await Task.sleep(for: .milliseconds(400))
+                try storageSnapshot(window, output.appendingPathComponent("disk-explorer-folder.png"))
+                guard model.storage.explorer.folder?.name == "_cacache", model.storage.plan == nil, model.storage.selection.isEmpty, FileManager.default.fileExists(atPath: scratch.appendingPathComponent(".npm/_cacache/content-v2/cache").path) else { throw StorageFailure.blocked("Explorer changed a file or failed to drill into a folder.") }
+                checks.append("PASS: hidden SSD explorer renders, measures hidden folders, handles a native folder click and drills into a cache without selecting or deleting files")
                 let report = "Nexa Storage Cleaner native smoke check\n" + checks.joined(separator: "\n") + "\nScreenshots use a labeled QA fixture of generated temporary files. No real user file was cleaned.\n"
                 try report.write(to: output.appendingPathComponent("storage-smoke-check.txt"), atomically: true, encoding: .utf8)
             } catch { try? ("FAIL: \(error.localizedDescription)\n" + checks.joined(separator: "\n")).write(to: output.appendingPathComponent("storage-smoke-check.txt"), atomically: true, encoding: .utf8) }

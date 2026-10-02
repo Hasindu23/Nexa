@@ -45,10 +45,10 @@ struct ActivityBanner: Identifiable {
     private var lastBannerTime = Date.distantPast
     private var announcedEvents = Set<String>()
     let testing: Bool
-    init(preferences: PreferencesStore? = nil, store: LocalStore = LocalStore(), testing: Bool = false) {
+    init(preferences: PreferencesStore? = nil, store: LocalStore = LocalStore(), testing: Bool = false, storageHome: URL? = nil) {
         let preferences = preferences ?? PreferencesStore()
         self.preferences = preferences; self.testing = testing
-        storage = StorageService(store: store, testing: testing)
+        storage = StorageService(store: store, home: storageHome ?? FileManager.default.homeDirectoryForCurrentUser, testing: testing)
         notebook = NotebookService(store: store); shortcuts = ShortcutsService(store: store)
         files = FileShelfService(store: store); clipboard = ClipboardService(store: store)
         files.onAdded = { [weak self] count in self?.notify("Ready when you are", detail: "\(count) \(count == 1 ? "file" : "files") added to your shelf", icon: "tray.and.arrow.down", priority: true) }

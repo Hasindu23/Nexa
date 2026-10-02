@@ -237,6 +237,12 @@ final class StorageCleanerTests: XCTestCase {
         _ = try StorageProcess.run("/usr/bin/hdiutil", ["create", "-size", "20m", "-fs", "HFS+", "-volname", "Nexa QA", "-srcfolder", f.downloads.path, image.path], timeout: 40)
         _ = try StorageProcess.run("/usr/bin/hdiutil", ["attach", "-readonly", "-nobrowse", "-mountpoint", mount.path, image.path], timeout: 30)
         defer { _ = try? StorageProcess.run("/usr/bin/hdiutil", ["detach", mount.path], timeout: 20) }
+        let tree = try DiskExplorerScanner.scan(root: f.home)
+        XCTAssertEqual(tree.entries[mount.path]?.skipped, 1)
+        XCTAssertEqual(tree.entries[mount.path]?.note, "Another volume · not followed")
+        XCTAssertNil(tree.entries[mount.appendingPathComponent("readonly.dmg").path])
+        let readOnlyTree = try DiskExplorerScanner.scan(root: mount)
+        XCTAssertEqual(readOnlyTree.measured.files, 1)
         let scan = try StorageScanner.scan(roots: [ScanRoot(url: mount, category: .downloads, group: "Read-only fixture")], policy: f.policy)
         XCTAssertEqual(scan.items.count, 1, scan.issues.joined(separator: "\n"))
         guard let item = scan.items.first else { return }

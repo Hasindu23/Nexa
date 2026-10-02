@@ -1,8 +1,10 @@
-# Storage Cleaner · Nexa 0.4.2
+# Storage Cleaner · Nexa 0.5.0
 
 This release extends the existing native macOS Nexa app. Open **Nexa** in Applications to show the main window. Storage Cleaner also remains available from the menu bar menu and the Storage Cleaner widget. Quit an older running copy of Nexa before opening the new build.
 
 Version 0.4.2 combines Storage Cleaner and launch fixes with the existing GitHub release’s display-without-a-notch support and repository/update links. The local installation is `/Applications/Nexa.app`; existing settings are preserved.
+
+Disk Space Explorer now measures hidden Library and dot folders, supports folder drill-down and largest-file search, and lists startup snapshots without deleting them. See the [explorer guide](DISK-EXPLORER.md). npm, pip and Homebrew download-cache roots have also been added.
 
 ## Cleaning workflow
 

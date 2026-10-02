@@ -8,6 +8,9 @@ enum StorageScanner {
             ScanRoot(url: home.appendingPathComponent(relative), category: category, group: group, risk: risk, cleanable: cleanable, recommendation: recommended)
         }
         var roots = [
+            root(".npm/_cacache", .caches, "npm · Download cache", .safe, true),
+            root("Library/Caches/pip", .caches, "pip · Download cache", .safe, true),
+            root("Library/Caches/Homebrew/downloads", .caches, "Homebrew · Downloads", .safe, true),
             root("Library/Caches/com.spotify.client", .caches, "Spotify", .safe, true),
             root("Library/Caches/com.hnc.Discord", .caches, "Discord", .safe, true),
             root("Library/Caches/Google/Chrome", .browser, "Chrome · Cache", .safe, true),

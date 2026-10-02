@@ -57,7 +57,7 @@ struct AboutSettingsView: View {
     @ObservedObject var preferences: PreferencesStore
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 20) { BrandMark(size: 76, accent: preferences.value.accent.color); VStack(alignment: .leading, spacing: 6) { Text("Nexa").font(.system(size: 29, weight: .semibold, design: .rounded)); Text("Version 0.4.2 · Native for macOS 15+").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary); Text("A little less in your way.").font(.system(size: 12)).foregroundStyle(preferences.value.accent.color) } }.padding(.vertical, 15)
+            HStack(spacing: 20) { BrandMark(size: 76, accent: preferences.value.accent.color); VStack(alignment: .leading, spacing: 6) { Text("Nexa").font(.system(size: 29, weight: .semibold, design: .rounded)); Text("Version 0.5.0 · Native for macOS 15+").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary); Text("A little less in your way.").font(.system(size: 12)).foregroundStyle(preferences.value.accent.color) } }.padding(.vertical, 15)
             SettingsGroup(title: "OPEN BY DESIGN") {
                 Text("Original Swift, SwiftUI and AppKit implementation. No proprietary assets. Includes the BSD-licensed MediaRemote Adapter by Jonas van den Berg and contributors for system-wide media. Source is included with this build under the MIT license. Apple system symbols remain subject to Apple’s terms.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary).lineSpacing(4)
                 TextField("Repository URL (optional)", text: $preferences.value.repositoryURL).textFieldStyle(.roundedBorder)
