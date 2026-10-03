@@ -1,0 +1,28 @@
+{
+  "version": "0.6.0",
+  "build": 10,
+  "testedOS": "27.0",
+  "runtimeArchitecture": "arm64",
+  "architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "automatedTests": 83,
+  "failedTests": 0,
+  "nativeStorageMemory": "passed",
+  "nativeApp": "passed",
+  "nativeNoNotch": "passed",
+  "nativeMotion": "passed",
+  "fixtureCacheRemovalAndRescan": "passed",
+  "fixtureNormalAppQuit": "passed",
+  "scanMemoryReleaseAndCapabilityInvalidation": "passed",
+  "installedLaunchChecks": "passed",
+  "strictCodeSignature": "passed",
+  "dmgIntegrity": "passed",
+  "installerMatchesInstalledApp": true,
+  "sha256": "6b30642e4e7e0dd904e7b61a0e1a6d2ba824076da1e77402ac25489824206b0b",
+  "appleNotarized": false,
+  "personalFilesDeleted": false,
+  "personalApplicationsClosed": false,
+  "lastInteractiveCheck": "not completed: Mac locked after installed-launch checks passed"
+}

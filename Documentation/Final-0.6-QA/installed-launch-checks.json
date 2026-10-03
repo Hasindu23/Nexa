@@ -1,0 +1,50 @@
+[
+  {
+    "check": "Normal launch from Applications",
+    "passed": true,
+    "state": {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 61595,
+      "version": "0.6.0"
+    }
+  },
+  {
+    "check": "Repeated icon launch reuses the running app",
+    "passed": true,
+    "state": {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 61595,
+      "version": "0.6.0"
+    }
+  },
+  {
+    "check": "Second launch restores the hidden app and exits the extra instance",
+    "passed": true,
+    "state": {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 61595,
+      "version": "0.6.0"
+    }
+  },
+  {
+    "check": "Fresh relaunch from the installed location",
+    "passed": true,
+    "state": {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 61620,
+      "version": "0.6.0"
+    }
+  }
+]

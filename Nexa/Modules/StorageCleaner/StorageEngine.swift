@@ -27,6 +27,7 @@ actor StorageEngine {
         return Array(history.prefix(200))
     }
     func accept(_ scan: StorageScan) { self.scan = scan; plans.removeAll() }
+    func discardScan() { scan = nil; plans.removeAll() }
     func updatePolicy(_ value: StoragePathPolicy) { policy = value; plans.removeAll(); scan = nil }
     func receipts() -> [CleanupReceipt] { history }
     func prepare(ids: Set<String>, action: CleanupAction, grant: StorageAgentGrant, now: Date = Date()) throws -> CleanupPlan {

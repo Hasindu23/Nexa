@@ -14,10 +14,12 @@ import Combine
     @Published var lastReceipt: CleanupReceipt?
     @Published var action: CleanupAction = .trash
     @Published var destination = "overview"
+    @Published private(set) var focus: StorageFocus?
     let home: URL
     let deviceID: String
     let engine: StorageEngine
     let explorer: DiskExplorerService
+    let memory = MemoryService()
     private let store: LocalStore
     private var worker: Task<StorageScan, Error>?
     private var cleanupWorker: Task<CleanupReceipt, Error>?
@@ -44,7 +46,7 @@ import Combine
     }
     func opened() {
         guard !testing, !busy else { return }
-        if scan == nil || Date().timeIntervalSince(scan!.date) > 600 { startScan() }
+        if scan == nil || Date().timeIntervalSince(scan!.date) > 600 { startScan(focus: focus) }
     }
     func configure(_ edit: (inout StorageSettings) -> Void) {
         guard !cleaning else { return }
@@ -53,32 +55,35 @@ import Combine
         settings.ignoredPaths = Array(Set(settings.ignoredPaths)).sorted()
         settings.selectedFolders = Array(Set(settings.selectedFolders)).sorted()
         // Changes to scope/protection always invalidate existing cleanup capabilities.
-        scan = nil; plan = nil; selection.removeAll(); saveSettings()
+        scan = nil; plan = nil; focus = nil; selection.removeAll(); saveSettings()
         let policy = policy; Task { await engine.updatePolicy(policy) }
     }
     private func saveSettings() { do { try store.write(settings, name: "storage-settings.json") } catch { self.error = error.localizedDescription } }
-    func startScan(inventory: Bool = false) {
+    func startScan(inventory: Bool = false, focus: StorageFocus? = nil) {
         guard !busy else { return }
+        self.focus = focus
+        if focus == nil && destination == "focused" { destination = "overview" }
         error = nil; plan = nil; selection.removeAll(); busy = true; status = "Preparing scan…"
         let token = UUID(); generation = token
-        let roots = StorageScanner.roots(home: home, settings: settings), policy = policy, home = home, settings = settings
+        let roots = focus?.roots ?? StorageScanner.roots(home: home, settings: settings), policy = policy, home = home, settings = settings
         let running = Set(NSWorkspace.shared.runningApplications.compactMap(\.bundleIdentifier))
         let progress: @Sendable (String, Int) -> Void = { [weak self] name, count in
             Task { @MainActor in guard let self, self.generation == token else { return }; self.status = "\(name) · \(count.formatted()) files" }
         }
         let worker = Task.detached(priority: .utility) {
             var result = try StorageScanner.scan(roots: roots, policy: policy, running: running, progress: progress)
+            if let focus, !focus.directory { result.items.removeAll { $0.path != focus.path } }
             if inventory {
                 progress("Inspecting applications", result.items.count)
                 result.items += try StorageScanner.applications(home: home)
                 result.items += try StorageScanner.leftovers(home: home)
             }
             let integration = StorageIntegrations(home: home)
-            if settings.includeDocker {
+            if focus == nil && settings.includeDocker {
                 do { progress("Reading local Docker storage", result.items.count); result.items += try integration.docker() }
                 catch { result.issues.append("Docker: \(error.localizedDescription)"); result.complete = false }
             }
-            if settings.includeOllama {
+            if focus == nil && settings.includeOllama {
                 do { progress("Reading local Ollama models", result.items.count); result.items += try integration.models() }
                 catch { result.issues.append("Ollama: \(error.localizedDescription)"); result.complete = false }
             }
@@ -92,7 +97,7 @@ import Combine
                 await self.engine.updatePolicy(policy); await self.engine.accept(result)
                 guard self.generation == token else { return }
                 self.scan = result; self.busy = false; self.worker = nil
-                self.status = result.complete ? "Scan complete · \(result.items.count.formatted()) items" : "Partial scan · review skipped locations"
+                self.status = result.complete ? "Scan complete · \(result.items.count.formatted()) \(result.items.count == 1 ? "item" : "items")" : "Partial scan · review skipped locations"
             } catch {
                 guard let self, self.generation == token else { return }
                 self.busy = false; self.worker = nil; self.status = "Scan stopped"; self.error = error.localizedDescription
@@ -162,7 +167,7 @@ import Combine
             cleanupWorker = nil; cleaning = false; busy = false; selection.removeAll(); scan = nil
             // A fresh filesystem inventory follows every attempted operation.
             explorer.invalidate()
-            let operationError = self.error; startScan(); if let operationError { self.error = operationError }
+            let operationError = self.error; startScan(focus: focus); if let operationError { self.error = operationError }
         }
     }
     func undo(_ receipt: CleanupReceipt) {
@@ -175,7 +180,7 @@ import Combine
             catch { self.error = error.localizedDescription }
             cleanupWorker = nil; cleaning = false; busy = false; scan = nil
             explorer.invalidate()
-            let recoveryError = self.error; startScan(); if let recoveryError { self.error = recoveryError }
+            let recoveryError = self.error; startScan(focus: focus); if let recoveryError { self.error = recoveryError }
         }
     }
     func ignore(_ item: StorageItem) { configure { $0.ignoredPaths.append(item.path) }; startScan() }
@@ -208,6 +213,17 @@ import Combine
         }
         destination = category.rawValue; action = .trash; startScan()
     }
-    func stop() { explorer.cancel(); worker?.cancel(); cleanupWorker?.cancel(); scheduler?.invalidate() }
+    func reviewFromExplorer(_ entry: DiskEntry) {
+        guard !busy, !explorer.busy, let focus = StorageScanner.focus(path: entry.path, directory: entry.directory, home: home) else { return }
+        destination = "focused"; action = .trash; startScan(focus: focus)
+    }
+    func clearScanResults() async {
+        guard !busy, !explorer.busy else { return }
+        cancel(); focus = nil; explorer.clear(); busy = true
+        await engine.discardScan()
+        busy = false; status = "Scan results cleared · scan again before cleaning"
+        memory.refresh()
+    }
+    func stop() { memory.cancel(); explorer.cancel(); worker?.cancel(); cleanupWorker?.cancel(); scheduler?.invalidate() }
     func loadFixture(_ result: StorageScan) async { await engine.accept(result); scan = result; status = "QA fixture · no personal files" }
 }

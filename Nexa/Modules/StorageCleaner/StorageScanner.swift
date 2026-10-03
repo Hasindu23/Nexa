@@ -3,6 +3,26 @@ import Darwin
 import CoreServices
 
 enum StorageScanner {
+    /// A disk inventory never grants arbitrary deletion access. Only existing cleanup rules apply.
+    static func focus(path: String, directory: Bool, home: URL) -> StorageFocus? {
+        let policy = StoragePathPolicy(home: home)
+        guard (try? policy.validateSyntax(path)) != nil else { return nil }
+        let path = DiskCleanupGuide.canonical(path)
+        guard path != "/", path != home.path,
+              !policy.isProtected(path) || (directory && path == home.appendingPathComponent("Downloads").path) else { return nil }
+        var settings = StorageSettings(); settings.scanDownloads = true
+        let matches = roots(home: home, settings: settings).compactMap { root -> ScanRoot? in
+            guard root.cleanable, root.category != .temporary || !StoragePathPolicy.contains(home.path, path) else { return nil }
+            if StoragePathPolicy.contains(root.url.path, path) {
+                let url = URL(fileURLWithPath: path)
+                return ScanRoot(url: directory ? url : url.deletingLastPathComponent(), category: root.category, group: root.group,
+                                risk: root.risk, cleanable: root.cleanable, recommendation: root.recommendation)
+            }
+            if directory && StoragePathPolicy.contains(path, root.url.path) { return root }
+            return nil
+        }
+        return matches.isEmpty ? nil : StorageFocus(path: path, directory: directory, roots: matches)
+    }
     static func roots(home: URL, settings: StorageSettings) -> [ScanRoot] {
         func root(_ relative: String, _ category: StorageCategory, _ group: String, _ risk: StorageRisk = .review, _ recommended: Bool = false, _ cleanable: Bool = true) -> ScanRoot {
             ScanRoot(url: home.appendingPathComponent(relative), category: category, group: group, risk: risk, cleanable: cleanable, recommendation: recommended)

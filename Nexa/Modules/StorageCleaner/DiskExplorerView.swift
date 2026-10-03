@@ -162,7 +162,9 @@ struct DiskExplorerView: View {
                         Button("Analyze this folder") { explorer.start(URL(fileURLWithPath: item.path)) }.disabled(storage.busy || explorer.busy)
                     }
                     Spacer()
-                    if let category { Button("Review \(category.title)…") { storage.reviewFromExplorer(category) }.buttonStyle(.borderedProminent).disabled(storage.busy || explorer.busy) }
+                    if StorageScanner.focus(path: item.path, directory: item.directory, home: storage.home) != nil {
+                        Button("Review removable files…") { storage.reviewFromExplorer(item) }.buttonStyle(.borderedProminent).disabled(storage.busy || explorer.busy)
+                    } else if let category { Button("Review \(category.title)…") { storage.reviewFromExplorer(category) }.buttonStyle(.borderedProminent).disabled(storage.busy || explorer.busy) }
                 }.font(.caption)
             }
         }

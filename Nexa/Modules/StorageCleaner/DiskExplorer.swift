@@ -173,6 +173,7 @@ enum DiskCleanupGuide {
         if path.contains("/Application Support/") || path.contains("/Containers/") || path.contains("/Group Containers/") { return "Application data · can include documents, databases and saved sessions. Manage it in the owning app." }
         if policy.isProtected(path) { return "Protected location · inspection only. System and personal data are not cleanup targets here." }
         if let category = category(for: path, home: home) { return "Open \(category.title) for a fresh scan and exact-item review. This inventory does not select or remove files." }
+        if StorageScanner.focus(path: path, directory: true, home: home) != nil { return "This folder contains supported cleanup locations. Review removable files to scan only those known locations; unknown app data is excluded." }
         return "Size alone does not make a file disposable. Reveal it in Finder to identify the owner and purpose."
     }
 }
@@ -220,6 +221,10 @@ enum DiskCleanupGuide {
     }
     func cancel() { generation = UUID(); worker?.cancel(); worker = nil; busy = false; status = "Analysis canceled · no files changed" }
     func invalidate() { cancel(); result = nil; selected = nil; current = nil; status = "Storage changed · analyze again for current folder sizes" }
+    func clear() {
+        cancel(); result = nil; selected = nil; current = nil; snapshots = nil; snapshotNotice = nil
+        status = "Scan results cleared · no files changed"
+    }
     func chooseFolder() {
         guard !busy else { return }
         let picker = NSOpenPanel(); picker.canChooseFiles = false; picker.canChooseDirectories = true; picker.showsHiddenFiles = true

@@ -50,6 +50,7 @@ import Combine
         if CommandLine.arguments.contains("--settings") { showSettings() }
         else if CommandLine.arguments.contains("--storage") { showStorage() }
         else if CommandLine.arguments.contains("--explorer") { showExplorer() }
+        else if CommandLine.arguments.contains("--memory") { showMemory() }
         else if !CommandLine.arguments.contains("--background") { showPrimaryWindow() }
         if CommandLine.arguments.contains("--expanded") {
             // Give the initially hidden SwiftUI hosts their first display pass.
@@ -82,6 +83,7 @@ import Combine
         menu.addItem(.separator())
         add("Storage Cleaner…", action: #selector(showStorage), key: "", menu: menu)
         add("Disk Space Explorer…", action: #selector(showExplorer), key: "", menu: menu)
+        add("Memory & Apps…", action: #selector(showMemory), key: "", menu: menu)
         add("Settings…", action: #selector(showSettings), key: ",", menu: menu)
         add("Quit Nexa", action: #selector(quit), key: "q", menu: menu)
     }
@@ -111,9 +113,10 @@ import Combine
             if !model.testing { storageWindow?.setFrameAutosaveName("Nexa.StorageCleaner") }
         }
         if let window = storageWindow { present(window) }
-        if model.storage.destination != "explorer" { model.storage.opened() }
+        if !["explorer", "memory"].contains(model.storage.destination) { model.storage.opened() }
     }
     @objc func showExplorer() { model.storage.destination = "explorer"; showStorage() }
+    @objc func showMemory() { model.storage.destination = "memory"; showStorage() }
     @objc func showSettings() {
         if settingsWindow == nil {
             settingsWindow = makeWindow(title: "Nexa Settings", width: 860, height: 720)

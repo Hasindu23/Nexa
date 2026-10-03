@@ -140,4 +140,73 @@ final class DiskExplorerTests: XCTestCase {
         XCTAssertNil(service.plan); XCTAssertTrue(service.selection.isEmpty); XCTAssertNil(service.scan)
         service.explorer.invalidate(); XCTAssertNil(service.explorer.result)
     }
+    func testFocusedCleanupOnlyIncludesKnownRootsBelowTheChosenFolder() throws {
+        let home = try fixture()
+        let chosen = home.appendingPathComponent("Library/Caches")
+        let focus = try XCTUnwrap(StorageScanner.focus(path: chosen.path, directory: true, home: home))
+        XCTAssertFalse(focus.roots.isEmpty)
+        XCTAssertTrue(focus.roots.allSatisfy { StoragePathPolicy.contains(chosen.path, $0.url.path) })
+        XCTAssertNil(StorageScanner.focus(path: chosen.appendingPathComponent("UnknownApp").path, directory: true, home: home))
+        XCTAssertNil(StorageScanner.focus(path: home.appendingPathComponent("Library/Application Support").path, directory: true, home: home))
+        XCTAssertNil(StorageScanner.focus(path: "/", directory: true, home: home))
+        XCTAssertNil(StorageScanner.focus(path: home.path, directory: true, home: home))
+        XCTAssertNil(StorageScanner.focus(path: home.path + "/Library/Caches/../Application Support", directory: true, home: home))
+    }
+    func testFocusedNestedCacheExcludesSiblingCachesAndDatabases() throws {
+        let home = try fixture()
+        let cache = try file(home, ".npm/_cacache/content-v2/file")
+        let database = try file(home, ".npm/_cacache/content-v2/important.sqlite")
+        let other = try file(home, ".npm/_cacache/index-v5/other")
+        let focus = try XCTUnwrap(StorageScanner.focus(path: cache.deletingLastPathComponent().path, directory: true, home: home))
+        let scan = try StorageScanner.scan(roots: focus.roots, policy: StoragePathPolicy(home: home))
+        XCTAssertTrue(scan.items.contains { $0.path == cache.path && $0.eligible })
+        XCTAssertTrue(scan.items.contains { $0.path == database.path && !$0.eligible })
+        XCTAssertFalse(scan.items.contains { $0.path == other.path })
+    }
+    @MainActor func testExplorerSingleFileReviewScansOnlyThatFileWithoutSelectingIt() async throws {
+        let home = try fixture(), chosen = try file(home, ".npm/_cacache/one")
+        _ = try file(home, ".npm/_cacache/two")
+        let service = StorageService(store: LocalStore(root: home.appendingPathComponent("State")), home: home, testing: true)
+        let inventory = try DiskExplorerScanner.scan(root: home)
+        service.explorer.loadFixture(inventory)
+        service.reviewFromExplorer(try XCTUnwrap(inventory.entries[chosen.path]))
+        for _ in 0..<100 { if !service.busy { break }; try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertFalse(service.busy); XCTAssertEqual(service.scan?.items.map(\.path), [chosen.path])
+        XCTAssertTrue(service.selection.isEmpty); XCTAssertNil(service.plan)
+        XCTAssertEqual(service.destination, "focused"); XCTAssertNotNil(service.focus)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: chosen.path))
+        service.stop()
+    }
+    func testFocusedCleanupRequiresTypedConfirmationAndVerifiesDeletion() async throws {
+        let home = try fixture(), cache = try file(home, ".npm/_cacache/content-v2/file", 64000)
+        let original = try file(home, "Library/Application Support/App/work.db", 2000)
+        let focus = try XCTUnwrap(StorageScanner.focus(path: cache.deletingLastPathComponent().path, directory: true, home: home))
+        let policy = StoragePathPolicy(home: home), scan = try StorageScanner.scan(roots: focus.roots, policy: policy)
+        let engine = StorageEngine(policy: policy, store: LocalStore(root: home.appendingPathComponent("State")), deviceID: "fixture", activeFileCheck: { _ in [] })
+        let grant = StorageAgentGrant(deviceID: "fixture", scopes: ["CLEAN_STORAGE"], connected: true, expires: Date().addingTimeInterval(600))
+        await engine.accept(scan)
+        let plan = try await engine.prepare(ids: [cache.path], action: .cache, grant: grant)
+        do { _ = try await engine.execute(planID: plan.id, confirmed: true, permanentPhrase: "", grant: grant); XCTFail("Typed confirmation is required") } catch {}
+        XCTAssertTrue(FileManager.default.fileExists(atPath: cache.path))
+        let receipt = try await engine.execute(planID: plan.id, confirmed: true, permanentPhrase: "DELETE", grant: grant)
+        XCTAssertEqual(receipt.succeeded, [cache.path]); XCTAssertTrue(receipt.failures.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cache.path)); XCTAssertTrue(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertEqual(receipt.removedBytes, 64000)
+        XCTAssertLessThanOrEqual(receipt.reclaimedBytes, scan.items.reduce(0) { $0 + $1.allocated })
+        XCTAssertEqual(try StorageScanner.scan(roots: focus.roots, policy: policy).items.count, 0)
+    }
+    @MainActor func testReleasingScanMemoryInvalidatesCleanupCapabilityWithoutDeletingFiles() async throws {
+        let home = try fixture(), cache = try file(home, ".npm/_cacache/file")
+        let service = StorageService(store: LocalStore(root: home.appendingPathComponent("State")), home: home, testing: true)
+        let focus = try XCTUnwrap(StorageScanner.focus(path: cache.deletingLastPathComponent().path, directory: true, home: home))
+        let scan = try StorageScanner.scan(roots: focus.roots, policy: service.policy)
+        await service.loadFixture(scan)
+        service.explorer.loadFixture(try DiskExplorerScanner.scan(root: home))
+        let plan = try await service.engine.prepare(ids: [cache.path], action: .cache, grant: service.grant)
+        await service.clearScanResults()
+        XCTAssertNil(service.scan); XCTAssertNil(service.explorer.result); XCTAssertNil(service.plan)
+        do { _ = try await service.engine.execute(planID: plan.id, confirmed: true, permanentPhrase: "DELETE", grant: service.grant); XCTFail("Cleared scan must invalidate previous review") } catch {}
+        XCTAssertTrue(FileManager.default.fileExists(atPath: cache.path))
+        service.stop()
+    }
 }

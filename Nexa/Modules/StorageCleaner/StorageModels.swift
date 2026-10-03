@@ -107,6 +107,12 @@ struct ScanRoot: Sendable {
     var recommendation = false
 }
 
+struct StorageFocus: Sendable {
+    let path: String
+    let directory: Bool
+    let roots: [ScanRoot]
+}
+
 struct StorageScan: Sendable {
     let id: UUID
     let date: Date

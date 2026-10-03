@@ -24,7 +24,7 @@ struct StorageCleanerView: View {
         let days = age == -1 ? max(0, Int(customAge) ?? 0) : age
         let size = max(0, Double(minimumMB) ?? 0) * 1_000_000
         return (service.scan?.items ?? []).filter { item in
-            let matchesPage = page == "duplicates" ? item.duplicateHash != nil : page == "recommended" ? item.recommended : item.category == category
+            let matchesPage = page == "focused" ? true : page == "duplicates" ? item.duplicateHash != nil : page == "recommended" ? item.recommended : item.category == category
             let date = useAccessDate ? item.accessed : item.modified
             return matchesPage && (search.isEmpty || item.path.localizedCaseInsensitiveContains(search) || item.group.localizedCaseInsensitiveContains(search)) &&
                 Double(item.bytes) >= size && (days == 0 || (date != nil && Date().timeIntervalSince(date!) >= Double(days) * 86400))
@@ -39,16 +39,17 @@ struct StorageCleanerView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
                         if let error = service.error { notice(error, icon: "exclamationmark.triangle", color: .orange) }
-                        if let receipt = service.lastReceipt { resultCard(receipt) }
+                        if page != "memory", let receipt = service.lastReceipt { resultCard(receipt) }
                         if page == "overview" { overview }
                         else if page == "explorer" { DiskExplorerView(explorer: service.explorer, storage: service) }
+                        else if page == "memory" { MemoryView(service: service.memory, canClearScans: !service.busy && !service.explorer.busy, clearScans: { Task { await service.clearScanResults() } }) }
                         else if page == "history" { history }
                         else if page == "safety" { safety }
                         else if page == "devices" { devices }
                         else { detail }
                     }.padding(28)
                 }
-                if page != "explorer" { footer }
+                if !["explorer", "memory"].contains(page) { footer }
             }
         }
         .frame(minWidth: 1040, minHeight: 700)
@@ -62,7 +63,7 @@ struct StorageCleanerView: View {
                 Text(item.path).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             }.padding(22)
         }
-        .onAppear { if page != "explorer" { service.opened() } }
+        .onAppear { if !["explorer", "memory"].contains(page) { service.opened() } }
         .onChange(of: page) { _, _ in search = ""; age = 0; minimumMB = page == "largeFiles" ? "100" : "0"; shown = 200; useAccessDate = false }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: page)
     }
@@ -74,6 +75,8 @@ struct StorageCleanerView: View {
                     nav("overview", "Overview", "square.grid.2x2")
                     nav("recommended", "Recommended", "sparkle")
                     nav("explorer", "Disk space explorer", "chart.pie")
+                    nav("memory", "Memory & apps", "memorychip")
+                    if service.focus != nil { nav("focused", "Removal review", "checklist") }
                     sidebarLabel("STORAGE")
                     ForEach(StorageCategory.allCases.filter { ![.leftovers, .applications].contains($0) }) { item in nav(item.rawValue, item.title, item.icon) }
                     nav("duplicates", "Duplicate finder", "square.on.square")
@@ -104,7 +107,7 @@ struct StorageCleanerView: View {
             }
             Spacer()
             if service.busy { ProgressView().controlSize(.small); Button("Cancel") { service.cancel() }.buttonStyle(CapsuleButtonStyle()) }
-            else if page != "explorer" { Button { service.startScan() } label: { Label("Scan storage", systemImage: "arrow.clockwise") }.buttonStyle(CapsuleButtonStyle(accent: CleanerStyle.blue)).accessibilityIdentifier("storage.scan") }
+            else if !["explorer", "memory"].contains(page) { Button { service.startScan(focus: page == "focused" ? service.focus : nil) } label: { Label("Scan storage", systemImage: "arrow.clockwise") }.buttonStyle(CapsuleButtonStyle(accent: CleanerStyle.blue)).accessibilityIdentifier("storage.scan") }
         }.padding(.horizontal, 29).padding(.top, 24).padding(.bottom, 20)
     }
     private var overview: some View {
@@ -208,9 +211,17 @@ struct StorageCleanerView: View {
     private var detail: some View {
         let visibleItems = filtered
         return VStack(alignment: .leading, spacing: 18) {
-            Text(page == "duplicates" ? "Duplicate finder" : page == "recommended" ? "Recommended cleanup" : category?.title ?? "Storage").font(.system(size: 27, weight: .semibold))
+            Text(page == "focused" ? "Review removable files" : page == "duplicates" ? "Duplicate finder" : page == "recommended" ? "Recommended cleanup" : category?.title ?? "Storage").font(.system(size: 27, weight: .semibold))
             Text(page == "duplicates" ? "Candidates are grouped by size, compared using a small sample, then verified with SHA-256. Choose the copy to keep. Filename alone is never enough." : page == "recommended" ? "Only recognized caches, temporary files and old installer candidates appear here. Review the exact files before continuing. No personal documents or sensitive resources are preselected." : category?.explanation ?? "").font(.system(size: 12)).foregroundStyle(CleanerStyle.muted).lineSpacing(4)
-            scopeControls
+            if page == "focused", let focus = service.focus {
+                Surface { VStack(alignment: .leading, spacing: 9) {
+                    Text(focus.path).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
+                    Text("Only recognized cleanup locations inside this selection are scanned. Unknown app data stays outside this review. Select the exact files, choose Move to Trash or Delete Cache, then review and confirm. Delete Cache is permanent and needs an additional typed confirmation.").font(.system(size: 12)).foregroundStyle(CleanerStyle.muted)
+                    let eligible = visibleItems.filter(\.eligible)
+                    Text("\(eligible.count.formatted()) removable \(eligible.count == 1 ? "candidate" : "candidates") · \(storageBytes(eligible.reduce(0) { $0 + $1.allocated })) allocated estimate").font(.system(size: 12, weight: .semibold)).foregroundStyle(CleanerStyle.blue)
+                    Text("Reclaimable space can be lower. Trash does not free space until it is emptied.").font(.caption).foregroundStyle(CleanerStyle.muted)
+                } }
+            } else { scopeControls }
             filters
             if page == "duplicates" && service.scan?.duplicateComplete != true {
                 Surface { HStack { Label("Hashing runs only when requested.", systemImage: "checkmark.seal"); Spacer(); Button("Verify duplicates") { service.findDuplicates() }.buttonStyle(CapsuleButtonStyle(accent: CleanerStyle.blue, filled: true)).disabled(service.scan == nil || service.busy) }.font(.system(size: 12)) }

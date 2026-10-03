@@ -1,4 +1,4 @@
-# Storage Cleaner · Nexa 0.5.0
+# Storage Cleaner · Nexa 0.6.0
 
 This release extends the existing native macOS Nexa app. Open **Nexa** in Applications to show the main window. Storage Cleaner also remains available from the menu bar menu and the Storage Cleaner widget. Quit an older running copy of Nexa before opening the new build.
 

@@ -1,4 +1,4 @@
-# Disk Space Explorer — Nexa 0.5.0
+# Disk Space Explorer — Nexa 0.6.0
 
 Open **Nexa → Disk Space Explorer** in the menu bar, choose **Disk space explorer** in Storage Cleaner, or click **Explore hidden SSD storage** on its overview.
 
@@ -11,7 +11,7 @@ Choose **Analyze Home** to measure your home folder, including Library and dot f
 - **Largest files below here** finds files beneath the current folder, including nested hidden folders. The list shows at most 200 matches at once; narrow the search or folder to inspect more.
 - Select an entry for its full path, explanation and **Reveal in Finder** action.
 - If a scan reaches its entry or depth limit, a warning appears above the totals. Open a smaller folder and choose **Analyze this folder** to measure it with a fresh scan budget.
-- Known cleanup locations link to a fresh Storage Cleaner scan. Nothing is preselected by the explorer. The existing exact-item review, confirmation, Trash and recovery rules still apply.
+- **Review removable files…** scans only known cleanup locations within the selected folder. For a selected file, the review is restricted to that file. Nothing is preselected. Choose individual files and an action in the resulting removal review; the existing exact-item review, confirmation, Trash and recovery rules still apply.
 
 The map uses allocated file blocks, not simply file lengths. Directory totals include inspected regular files. Hard links are counted once across the scan; shared APFS clone blocks may still overlap. Sparse files use the allocation macOS reports. Snapshots, system metadata, inaccessible locations and unscanned volumes are outside these totals. **Measured space is not necessarily reclaimable space.**
 
