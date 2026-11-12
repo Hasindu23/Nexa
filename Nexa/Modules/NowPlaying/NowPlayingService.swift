@@ -202,9 +202,9 @@ struct MediaTrack: Equatable {
             } catch { /* Artwork is optional; playback remains usable offline. */ }
         }
     }
-    func loadDemo() {
+    func loadDemo(playing: Bool = false) {
         demo = true
-        track = MediaTrack(title: "A quieter kind of focus", artist: "Nexa Sessions · Interface preview", album: "Still", duration: 248, position: 87, playing: false, appID: "com.apple.Music")
+        track = MediaTrack(title: "A quieter kind of focus", artist: "Nexa Sessions · Interface preview", album: "Still", duration: 248, position: 87, playing: playing, appID: "com.apple.Music")
         sourceName = "Apple Music"
     }
 }

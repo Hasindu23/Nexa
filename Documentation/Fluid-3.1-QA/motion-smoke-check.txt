@@ -1,0 +1,7 @@
+PASS: 8 full open/close cycles, 24 rapid reversals, 12 widget changes settled into the exact collapsed camera frame.
+Native window resize notifications: 36
+Main-loop heartbeat samples: 1280
+Heartbeat p95 interval: 9.32 ms
+Longest main-loop heartbeat interval: 73.71 ms
+Heartbeat intervals over 33.3 ms: 1
+Measurement is main-loop responsiveness, not rendered display FPS. No private data, camera or playback commands used.

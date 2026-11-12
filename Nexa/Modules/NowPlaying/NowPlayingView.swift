@@ -6,7 +6,7 @@ struct NowPlayingView: View {
     @ObservedObject var preferences: PreferencesStore
     private var accent: Color { preferences.value.accent.color }
     var body: some View {
-        VStack(alignment: .leading, spacing: 17) {
+        VStack(alignment: .leading, spacing: 11) {
             HStack {
                 Text(service.track.appID.isEmpty ? "GOOD TO HAVE YOU HERE" : service.demo ? "INTERFACE PREVIEW" : service.sourceName.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(1.8).foregroundStyle(accent)
                 Spacer()
@@ -28,6 +28,14 @@ struct NowPlayingView: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
             if !service.track.appID.isEmpty {
+                HStack(spacing: 12) {
+                    PlaybackPulse(playing: service.track.playing, preferences: preferences).frame(width: 108, height: 30)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("ELECTRIC BLUE").font(.system(size: 8, weight: .semibold)).tracking(1.2).foregroundStyle(Color(ElectricBluePalette.waveform))
+                        Text("Decorative playback animation").font(.system(size: 9)).foregroundStyle(NexaStyle.secondary)
+                    }
+                    Spacer()
+                }.padding(.vertical, 3)
                 MediaScrubber(service: service, accent: accent)
                 HStack {
                     Image(systemName: "speaker.wave.1").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary)
@@ -53,13 +61,13 @@ struct NowPlayingView: View {
         ZStack {
             if let artwork = service.artwork { Image(nsImage: artwork).resizable().scaledToFill() }
             else {
-                Color(red: 0.12, green: 0.19, blue: 0.17)
+                LinearGradient(colors: [Color(ElectricBluePalette.royal).opacity(0.5), .black], startPoint: .topLeading, endPoint: .bottomTrailing)
                 Circle().stroke(accent.opacity(0.12), lineWidth: 1).frame(width: 112).offset(x: 28, y: -25)
                 Circle().stroke(accent.opacity(0.18), lineWidth: 1).frame(width: 86).offset(x: 28, y: -25)
                 Circle().stroke(accent.opacity(0.3), lineWidth: 1).frame(width: 60).offset(x: 28, y: -25)
                 Image(systemName: "waveform").font(.system(size: 38, weight: .ultraLight)).foregroundStyle(accent).offset(y: 9)
                 VStack { Spacer(); HStack { Text("N / 01").font(.system(size: 7, weight: .medium, design: .monospaced)).tracking(2); Spacer() }.padding(12) }.foregroundStyle(accent.opacity(0.5))
             }
-        }.frame(width: 124, height: 124).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.white.opacity(0.07)))
+        }.frame(width: 100, height: 100).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.white.opacity(0.07)))
     }
 }

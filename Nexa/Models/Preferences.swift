@@ -61,6 +61,18 @@ enum Accent: String, Codable, CaseIterable {
     }
 }
 
+enum MotionPreset: String, Codable, CaseIterable, Identifiable {
+    case subtle, balanced, playful
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+}
+
+enum VisualizerStyle: String, Codable, CaseIterable, Identifiable {
+    case bars, wave, minimal
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+}
+
 struct AppPreferences: Codable, Equatable {
     var completedOnboarding = false
     var showMenuBar = true
@@ -74,6 +86,13 @@ struct AppPreferences: Codable, Equatable {
     var hoverDelay = 0.14
     var collapseDelay = 0.42
     var animationSpeed = 1.0
+    var motionPreset = MotionPreset.balanced
+    var reduceMotion = false
+    var energySaving = false
+    var visualizerStyle = VisualizerStyle.bars
+    var visualizerBrightness = 0.8
+    var ambientBlueGlow = true
+    var glowIntensity = 0.35
     var notchWidth = 0.0
     var horizontalOffset = 0.0
     var opacity = 0.96
@@ -82,7 +101,7 @@ struct AppPreferences: Codable, Equatable {
     var layout = "Normal"
     var shadow = true
     var border = true
-    var accent = Accent.mint
+    var accent = Accent.blue
     var soundEffects = false
     var enabledModules = Set(ModuleID.allCases.filter { $0 != .ai && $0 != .weather && $0 != .bluetooth })
     var clipboardEnabled = false
@@ -117,6 +136,13 @@ struct AppPreferences: Codable, Equatable {
         let base = (try? JSONEncoder().encode(AppPreferences())).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         let saved = defaults.data(forKey: "preferences.v1").flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         var merged = base.merging(saved) { _, old in old }
+        // Recover an unknown future enum independently instead of resetting all
+        // preferences, permissions, and module choices during decoding.
+        if let raw = merged["motionPreset"] as? String, MotionPreset(rawValue: raw) == nil { merged["motionPreset"] = base["motionPreset"] }
+        if let raw = merged["visualizerStyle"] as? String, VisualizerStyle(rawValue: raw) == nil { merged["visualizerStyle"] = base["visualizerStyle"] }
+        for (key, range) in [("animationSpeed", 0.5...2.0), ("visualizerBrightness", 0.1...1.0), ("glowIntensity", 0.0...1.0)] {
+            if let number = merged[key] as? Double { merged[key] = number.isFinite ? min(range.upperBound, max(range.lowerBound, number)) : base[key] }
+        }
         for key in ["repositoryURL", "updateFeedURL"] where saved[key] as? String == "" { merged[key] = base[key] }
         if saved["motionRevision"] == nil {
             // Upgrade only the previous defaults, preserving custom gesture timing.

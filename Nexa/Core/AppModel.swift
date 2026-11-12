@@ -112,7 +112,8 @@ struct ActivityBanner: Identifiable {
             if destination == .system && self.preferences.value.enabledModules.contains(.system) { self.system.setVisible(true) }
         }
         visibleRefresh = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.38 / max(0.5, min(2, preferences.value.animationSpeed)) + 0.10, execute: work)
+        let motion = NexaMotion(preferences: preferences.value, systemReduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        DispatchQueue.main.asyncAfter(deadline: .now() + motion.expansionDuration + 0.10, execute: work)
     }
     func togglePause() { paused.toggle(); if paused { setExpanded?(false) }; configure() }
     func notify(_ title: String, detail: String, icon: String, priority: Bool = false) {

@@ -19,6 +19,23 @@ import QuartzCore
     private var canvasSize = CGSize.zero
     private var dropTarget = false
     private(set) var renderedSize = CGSize.zero
+    private var settledState = NexaMorphState(width: 1, height: 1, radius: 14, shoulder: 0)
+    private var morph: NexaMorph?
+    private var morphStart: CFTimeInterval = 0
+
+    private func currentState(at time: CFTimeInterval) -> NexaMorphState {
+        morph?.sample(time - morphStart) ?? settledState
+    }
+    private func targetState(_ size: CGSize, expanded: Bool, hasNotch: Bool, preferences: AppPreferences) -> NexaMorphState {
+        NexaMorphState(width: size.width, height: size.height, radius: expanded ? preferences.cornerRadius : 14, shoulder: hasNotch && expanded ? 15 : 0)
+    }
+    func requiredCanvas(target: CGSize, expanded: Bool, hasNotch: Bool, preferences: AppPreferences, duration: Double) -> CGSize {
+        guard duration > 0 else { return target }
+        let curve = NexaMorph(from: currentState(at: CACurrentMediaTime()), to: targetState(target, expanded: expanded, hasNotch: hasNotch, preferences: preferences), duration: duration, damping: NexaMotion(preferences: preferences).damping)
+        let samples = curve.samples
+        return CGSize(width: ceil(max(target.width, samples.map(\.width).max() ?? target.width)) + 2,
+                      height: ceil(max(target.height, samples.map(\.height).max() ?? target.height)) + 2)
+    }
 
     init(expanded: NotchView, compact: NotchView) {
         expandedHost = NotchHostingView(rootView: expanded)
@@ -56,9 +73,9 @@ import QuartzCore
     func render(canvas: CGSize, target: CGSize, expandedSize: CGSize, compactSize: CGSize,
                 expanded: Bool, hasNotch: Bool, preferences: AppPreferences, module: ModuleID,
                 duration: TimeInterval, completion: @escaping () -> Void) {
-        let oldPath = maskLayer.presentation()?.path ?? maskLayer.path
-        var translation = CGAffineTransform(translationX: (canvas.width - canvasSize.width) / 2, y: 0)
-        let from = oldPath?.copy(using: &translation)
+        let now = CACurrentMediaTime()
+        let current = currentState(at: now)
+        let destination = targetState(target, expanded: expanded, hasNotch: hasNotch, preferences: preferences)
         let opening = expanded && !lastExpanded, closing = !expanded && lastExpanded
         let liftOrigin = expandedHost.isHidden ? -5.0 : (expandedHost.layer?.presentation()?.value(forKeyPath: "transform.translation.y") as? Double ?? 0)
         lastExpanded = expanded; canvasSize = canvas; renderedSize = target
@@ -75,12 +92,18 @@ import QuartzCore
         maskLayer.frame = surface.bounds; borderLayer.frame = surface.bounds
         let path = Self.path(size: target, canvasWidth: canvas.width, radius: expanded ? preferences.cornerRadius : 14, shoulder: hasNotch && expanded ? 15 : 0, detached: !hasNotch)
         maskLayer.path = path; borderLayer.path = path
-        if duration > 0, let from {
-            let morph = CABasicAnimation(keyPath: "path")
-            morph.fromValue = from; morph.toValue = path; morph.duration = duration
-            morph.timingFunction = CAMediaTimingFunction(controlPoints: 0.20, 0.82, 0.22, 1)
-            maskLayer.add(morph, forKey: "nexa.morph"); borderLayer.add(morph, forKey: "nexa.morph")
-        } else { maskLayer.removeAllAnimations(); borderLayer.removeAllAnimations() }
+        if duration > 0 {
+            let curve = NexaMorph(from: current, to: destination, duration: duration, damping: NexaMotion(preferences: preferences).damping)
+            morph = curve; morphStart = now
+            let animation = CAKeyframeAnimation(keyPath: "path")
+            animation.values = curve.samples.map { state in
+                Self.path(size: CGSize(width: max(1, state.width), height: max(1, state.height)), canvasWidth: canvas.width,
+                          radius: max(0, state.radius), shoulder: max(0, state.shoulder), detached: !hasNotch)
+            }
+            animation.duration = duration; animation.beginTime = now; animation.calculationMode = .linear
+            maskLayer.add(animation, forKey: "nexa.morph"); borderLayer.add(animation, forKey: "nexa.morph")
+        } else { morph = nil; maskLayer.removeAllAnimations(); borderLayer.removeAllAnimations() }
+        settledState = destination
         animateOpacity(expandedHost.layer!, to: expanded ? 1 : 0, duration: duration * (closing ? 0.34 : 0.8), delay: opening ? duration * 0.08 : 0)
         animateOpacity(compactHost.layer!, to: expanded ? 0 : 1, duration: duration * 0.5, delay: closing ? duration * 0.32 : 0)
         if opening, duration > 0 {
@@ -90,12 +113,13 @@ import QuartzCore
             expandedHost.layer?.add(lift, forKey: "nexa.lift")
         } else if duration == 0 { expandedHost.layer?.removeAnimation(forKey: "nexa.lift") }
         CATransaction.commit()
-        // Completion is generation-checked by the controller. An interrupted
-        // transition starts at the presentation layer, never an obsolete endpoint.
+        // Completion is generation-checked by the controller. Retargets sample
+        // the same analytic trajectory used by the compositor, including velocity.
         if duration == 0 { finish(expanded: expanded); completion() }
         else { DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.015) { completion() } }
     }
     func finish(expanded: Bool) {
+        morph = nil
         CATransaction.begin(); CATransaction.setDisableActions(true)
         maskLayer.removeAllAnimations(); borderLayer.removeAllAnimations()
         expandedHost.layer?.removeAllAnimations(); compactHost.layer?.removeAllAnimations()
@@ -106,7 +130,7 @@ import QuartzCore
     func updateAppearance(expanded: Bool, hasNotch: Bool, preferences: AppPreferences, dropTarget: Bool? = nil) {
         if let dropTarget { self.dropTarget = dropTarget }
         CATransaction.begin(); CATransaction.setDisableActions(true)
-        backdrop.isHidden = !expanded || preferences.blur == 0
+        backdrop.isHidden = !expanded || preferences.blur == 0 || preferences.energySaving
         backdrop.alphaValue = preferences.blur
         tint.layer?.backgroundColor = NSColor.black.withAlphaComponent(expanded ? preferences.opacity : 1).cgColor
         borderLayer.lineWidth = self.dropTarget ? 2 : 1

@@ -1,0 +1,2 @@
+PASS: 95 XCTest tests, zero failures, on the final source.
+Includes existing 83 regression tests plus preference migration, analytic spring continuity, rapid reversal, detached-screen bounds, custom Reduce Motion, background camera discovery and visualizer lifecycle coverage.

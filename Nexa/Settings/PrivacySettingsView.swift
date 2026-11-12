@@ -22,7 +22,7 @@ struct PrivacySettingsView: View {
             }
             SettingsGroup(title: "MEDIA & MIRROR") {
                 settingToggle("Connect Now Playing", detail: "Follows media reported by apps and websites to macOS.", value: $preferences.value.mediaConnected)
-                Text("Mirror starts only when clicked, stops when Nexa closes, and never records audio or video. System media is read locally, including in Local-only mode.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary)
+                Text("Mirror starts only when clicked, stops when Nexa closes, and never records audio or video. System media is read locally, including in Local-only mode. The visualizer is decorative; Nexa does not capture microphone or system audio.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary)
                 Button("Turn camera off") { model.mirror.stop() }.font(.system(size: 11))
             }
             SettingsGroup(title: "PERMISSIONS") {
@@ -57,9 +57,9 @@ struct AboutSettingsView: View {
     @ObservedObject var preferences: PreferencesStore
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            HStack(spacing: 20) { BrandMark(size: 76, accent: preferences.value.accent.color); VStack(alignment: .leading, spacing: 6) { Text("Nexa").font(.system(size: 29, weight: .semibold, design: .rounded)); Text("Version 0.6.0 · Native for macOS 15+").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary); Text("A little less in your way.").font(.system(size: 12)).foregroundStyle(preferences.value.accent.color) } }.padding(.vertical, 15)
+            HStack(spacing: 20) { BrandMark(size: 76, accent: preferences.value.accent.color); VStack(alignment: .leading, spacing: 6) { Text("Nexa").font(.system(size: 29, weight: .semibold, design: .rounded)); Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "3.1.0") · Native for macOS 15+").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary); Text("A little less in your way.").font(.system(size: 12)).foregroundStyle(preferences.value.accent.color) } }.padding(.vertical, 15)
             SettingsGroup(title: "OPEN BY DESIGN") {
-                Text("Original Swift, SwiftUI and AppKit implementation. No proprietary assets. Includes the BSD-licensed MediaRemote Adapter by Jonas van den Berg and contributors for system-wide media. Source is included with this build under the MIT license. Apple system symbols remain subject to Apple’s terms.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary).lineSpacing(4)
+                Text("Original Swift, SwiftUI and AppKit implementation. No proprietary assets. Includes the BSD-licensed MediaRemote Adapter by Jonas van den Berg and contributors for system-wide media. The existing system-wide integration uses Apple’s private MediaRemote framework and may be affected by macOS updates. Source is included with this build under the MIT license. Apple system symbols remain subject to Apple’s terms.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary).lineSpacing(4)
                 TextField("Repository URL (optional)", text: $preferences.value.repositoryURL).textFieldStyle(.roundedBorder)
                 if let url = URL(string: preferences.value.repositoryURL), url.scheme == "https" { Link("Open repository ↗", destination: url).font(.system(size: 11)) }
                 Text("Source code and release downloads are available on GitHub. Updates are checked only when you ask.").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)

@@ -2,6 +2,10 @@
 
 **A little more space.** An original native macOS notch companion built with Swift, SwiftUI and AppKit. No Electron, accounts, analytics, license checks or runtime downloads.
 
+Version **3.1.0 — Fluid Motion & Electric Blue** upgrades the existing island with continuous spring motion, three decorative blue visualizer styles, optional ambient glow, and persistent Appearance & Motion settings. Existing modules, saved data and preferences remain included. See the [3.1 release notes and validation](Documentation/RELEASE-3.1.md).
+
+The existing system-wide MediaRemote integration is retained by explicit user choice as a private-API exception. The new visualizer captures no audio and is labeled decorative. Reduce Motion and energy saving stop its repeating animations.
+
 ![Disk Space Explorer, running with generated QA fixtures](Documentation/Final-0.6-QA/disk-explorer-overview.png)
 
 Version **0.6.0** adds focused **Review removable files** actions and a **Memory & apps** page with confirmed normal app quitting and scan-memory release. **Disk Space Explorer** provides a folder map with hidden Library/dot folders, largest-file search, metadata-only analysis and separate snapshot inventory. See the [Disk Space Explorer guide](Documentation/DISK-EXPLORER.md). Storage Cleaner is available from the Nexa menu bar menu or its widget. See the [Storage Cleaner guide and verified scope](Documentation/STORAGE-CLEANER.md) and [validation report](Documentation/STORAGE-VALIDATION.md).
@@ -20,7 +24,7 @@ The Storage Cleaner screenshot is rendered by the running app using generated QA
 
 ## Start using it
 
-1. Quit any older running Nexa, open the supplied **Nexa-Final-0.6.0.dmg**, drag **Nexa** to **Applications**, then open it.
+1. Quit any older running Nexa, open the supplied **Nexa-3.1.0.dmg**, drag **Nexa** to **Applications**, then open it.
 2. Follow the welcome flow or select **Set up later**. No private-data permission is requested automatically.
 3. Hover over or click the top-center notch. On a Mac without a notch, use the top pill.
 4. Use the waveform menu bar icon for Open Nexa, Pause, Keep Awake, Settings and Quit.
@@ -37,7 +41,7 @@ If macOS blocks this downloaded build, use the source to build locally or review
 
 ### Mac mini and displays without a notch
 
-Nexa automatically uses a small rounded panel at the top center. Hover or click to expand it. Adjust **Settings → General → Pill position** to move it horizontally. macOS **15 or later** is required; the download includes Apple Silicon and Intel binaries. The notch-free layout is covered by native simulation and geometry tests; it has not been run on a separate physical Mac mini. Mirror requires an available built-in, external or Continuity camera.
+Nexa automatically uses a small rounded panel below the menu bar at the top center. Hover or click to expand it. Adjust **Settings → General → Pill position** to move it horizontally. macOS **15 or later** is required; the download includes Apple Silicon and Intel binaries. The notch-free layout is covered by native simulation and geometry tests; it has not been run on a separate physical Mac mini. Mirror requires an available built-in, external or Continuity camera.
 
 ## Included
 

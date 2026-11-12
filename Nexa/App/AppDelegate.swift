@@ -22,6 +22,9 @@ import Combine
     private var subscriptions = Set<AnyCancellable>()
     func applicationDidFinishLaunching(_ notification: Notification) {
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
+        if let index = CommandLine.arguments.firstIndex(of: "--qa-fluid"), CommandLine.arguments.count > index + 1 {
+            runFluidQA(output: URL(fileURLWithPath: CommandLine.arguments[index + 1])); return
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--qa-storage"), CommandLine.arguments.count > index + 1 {
             runStorageQA(output: URL(fileURLWithPath: CommandLine.arguments[index + 1])); return
         }
@@ -59,7 +62,7 @@ import Combine
         }
     }
     func setup() {
-        let simulatedDisplay = model.testing && CommandLine.arguments.contains("--qa-no-notch") ? NSScreen.main.map { NotchGeometry(frame: $0.frame, hardwareWidth: 170, hardwareHeight: 0) } : nil
+        let simulatedDisplay = model.testing && CommandLine.arguments.contains("--qa-no-notch") ? NSScreen.main.map { NotchGeometry(frame: $0.frame, hardwareWidth: 170, hardwareHeight: 0, menuBarHeight: max(NSStatusBar.system.thickness, $0.frame.maxY - $0.visibleFrame.maxY)) } : nil
         notch = NotchWindowController(model: model, geometryOverride: simulatedDisplay); notch.show()
         model.showStorage = { [weak self] in self?.showStorage() }
         model.showSettings = { [weak self] in self?.showSettings() }

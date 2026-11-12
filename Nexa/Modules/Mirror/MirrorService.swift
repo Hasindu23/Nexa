@@ -9,9 +9,15 @@ import SwiftUI
     @Published private(set) var devices: [AVCaptureDevice] = []
     let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "app.nexa.camera", qos: .userInitiated)
+    private let discover: () -> [AVCaptureDevice]
+    private var refreshingDevices = false
+    private var lastDeviceRefresh = Date.distantPast
     private var generation = 0
     private var observers: [NSObjectProtocol] = []
-    init() {
+    init(discover: @escaping () -> [AVCaptureDevice] = {
+        AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .external, .continuityCamera], mediaType: .video, position: .unspecified).devices
+    }) {
+        self.discover = discover
         for name in [AVCaptureSession.runtimeErrorNotification, AVCaptureSession.wasInterruptedNotification] {
             observers.append(NotificationCenter.default.addObserver(forName: name, object: session, queue: .main) { [weak self] _ in
                 Task { @MainActor in self?.stop(); self?.error = "Camera unavailable. Close other camera apps and try again." }
@@ -19,7 +25,16 @@ import SwiftUI
         }
     }
     func refreshDevices() {
-        devices = AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .external, .continuityCamera], mediaType: .video, position: .unspecified).devices
+        guard !refreshingDevices, Date().timeIntervalSince(lastDeviceRefresh) > 5 else { return }
+        refreshingDevices = true
+        let discover = self.discover
+        queue.async { [weak self] in
+            let available = discover()
+            Task { @MainActor in
+                guard let self else { return }
+                self.devices = available; self.refreshingDevices = false; self.lastDeviceRefresh = Date()
+            }
+        }
     }
     func toggle(deviceID: String) {
         if active || starting { stop() } else { Task { await start(deviceID: deviceID) } }
@@ -32,8 +47,13 @@ import SwiftUI
         if status == .notDetermined { allowed = await AVCaptureDevice.requestAccess(for: .video) }
         guard generation == token else { return }
         guard allowed else { starting = false; error = "Allow Camera access for Nexa in System Settings → Privacy & Security → Camera."; return }
-        refreshDevices()
-        guard let device = devices.first(where: { $0.uniqueID == deviceID }) ?? devices.first(where: { $0.deviceType == .builtInWideAngleCamera }) ?? devices.first else { starting = false; error = "Connect a camera to use Mirror."; return }
+        let discover = self.discover
+        let available: [AVCaptureDevice] = await withCheckedContinuation { continuation in
+            queue.async { continuation.resume(returning: discover()) }
+        }
+        guard generation == token else { return }
+        devices = available; lastDeviceRefresh = Date()
+        guard let device = available.first(where: { $0.uniqueID == deviceID }) ?? available.first(where: { $0.deviceType == .builtInWideAngleCamera }) ?? available.first else { starting = false; error = "Connect a camera to use Mirror."; return }
         let session = self.session
         queue.async { [weak self] in
             do {
@@ -63,6 +83,7 @@ import SwiftUI
             session.beginConfiguration(); session.inputs.forEach { session.removeInput($0) }; session.commitConfiguration()
         }
     }
+    deinit { for observer in observers { NotificationCenter.default.removeObserver(observer) } }
 }
 
 private final class MirrorPreview: NSView {

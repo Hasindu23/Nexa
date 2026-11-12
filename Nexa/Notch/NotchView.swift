@@ -10,6 +10,8 @@ struct NotchView: View {
     var expandedPresentation = false
     var toggle: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var moduleSelection
+    private var motion: NexaMotion { NexaMotion(preferences: preferences.value, systemReduceMotion: reduceMotion) }
     private var accent: Color { preferences.value.accent.color }
     private var cameraWidth: CGFloat { preferences.value.notchWidth > 0 ? max(120, preferences.value.notchWidth).rounded() : hardwareWidth }
     var body: some View {
@@ -26,7 +28,7 @@ struct NotchView: View {
                     }.padding(.horizontal, 20).frame(maxHeight: .infinity)
                 }.onTapGesture { model.setExpanded?(true) }
             } else {
-                CollapsedView(media: model.media, timers: model.timers, system: model.system, accent: accent, hasNotch: hasNotch, cameraWidth: cameraWidth, paused: model.paused, timerEnabled: preferences.value.enabledModules.contains(.timers))
+                CollapsedView(media: model.media, timers: model.timers, system: model.system, accent: accent, hasNotch: hasNotch, cameraWidth: cameraWidth, paused: model.paused, timerEnabled: preferences.value.enabledModules.contains(.timers), preferences: preferences)
                     .contentShape(Rectangle()).onTapGesture { if preferences.value.clickToOpen { toggle() } }
             }
         }
@@ -46,6 +48,7 @@ struct NotchView: View {
         .background {
             if expandedPresentation && model.expanded { SharePicker(items: model.sharingItems, presented: $model.showShare).frame(width: 1, height: 1) }
         }
+        .environment(\.nexaMotion, motion)
         .accessibilityIdentifier("nexa.notch")
     }
     private var expandedContent: some View {
@@ -73,10 +76,10 @@ struct NotchView: View {
                     HomeView(model: model, preferences: preferences)
                         .frame(height: preferences.value.homeHeight - max(44, hardwareHeight + 7)).transition(.opacity)
                 } else {
-                    detailContent.id(model.selected)
+                    detailContent
                         .frame(height: preferences.value.expandedHeight - max(44, hardwareHeight + 7)).transition(.opacity)
                 }
-            }.animation(reduceMotion ? nil : .easeInOut(duration: 0.18 / max(0.5, min(2, preferences.value.animationSpeed))), value: model.selected)
+            }.animation(motion.moduleAnimation, value: model.selected)
         }
     }
     private var detailContent: some View {
@@ -86,12 +89,13 @@ struct NotchView: View {
                         Button { model.selected = module } label: {
                             Image(systemName: module.icon).font(.system(size: 13, weight: model.selected == module ? .semibold : .regular))
                                 .foregroundStyle(model.selected == module ? accent : .white.opacity(0.35)).frame(maxWidth: .infinity).frame(height: 32)
-                                .background(model.selected == module ? accent.opacity(0.10) : .clear, in: RoundedRectangle(cornerRadius: 9))
+                                .background { if model.selected == module { RoundedRectangle(cornerRadius: 9).fill(accent.opacity(0.12)).matchedGeometryEffect(id: "detailSelection", in: moduleSelection) } }
                         }.buttonStyle(NotchButtonStyle()).help(module.title).accessibilityLabel(module.title).accessibilityIdentifier("module.\(module.rawValue)")
                     }
                 }.padding(.horizontal, 29).padding(.top, 3).padding(.bottom, 9)
                 ScrollView {
-                    moduleContent.padding(.horizontal, 30).padding(.top, 7).padding(.bottom, 18)
+                    ZStack(alignment: .top) { moduleContent.id(model.selected).transition(.opacity) }
+                        .padding(.horizontal, 30).padding(.top, 7).padding(.bottom, 18)
                 }.scrollIndicators(.hidden)
                 HStack { Text(model.selected.title.uppercased()).font(.system(size: 8, weight: .semibold)).tracking(1.5); Spacer(); if let banner = model.banner { Label(banner.title, systemImage: banner.icon).font(.system(size: 10)).foregroundStyle(accent) } }
                     .foregroundStyle(.white.opacity(0.3)).padding(.horizontal, 32).frame(height: 27)
@@ -102,8 +106,8 @@ struct NotchView: View {
             HStack(spacing: 5) { Image(systemName: module == .home ? "waveform" : "tray"); Text(label) }
                 .font(.system(size: 11, weight: .semibold)).padding(.horizontal, 11).padding(.vertical, 6)
                 .foregroundStyle(model.selected == module ? .white : .white.opacity(0.45))
-                .background(model.selected == module ? .white.opacity(0.12) : .clear, in: Capsule())
-        }.buttonStyle(NotchButtonStyle()).animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: model.selected).accessibilityIdentifier("module.\(module.rawValue)")
+                .background { if model.selected == module { Capsule().fill(.white.opacity(0.12)).matchedGeometryEffect(id: "headerSelection", in: moduleSelection) } }
+        }.buttonStyle(NotchButtonStyle()).animation(motion.moduleAnimation, value: model.selected).accessibilityIdentifier("module.\(module.rawValue)")
     }
     @ViewBuilder private var moduleContent: some View {
         switch model.selected {
@@ -158,6 +162,7 @@ private struct CollapsedView: View {
     let cameraWidth: CGFloat
     let paused: Bool
     let timerEnabled: Bool
+    @ObservedObject var preferences: PreferencesStore
     var body: some View {
         Group {
             if hasNotch {
@@ -185,7 +190,7 @@ private struct CollapsedView: View {
     private var trailingIndicator: some View {
         Group {
             if timers.running && timerEnabled { Circle().trim(from: 0, to: max(0.05, timers.progress)).stroke(accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round)).rotationEffect(.degrees(-90)).frame(width: 13, height: 13) }
-            else if media.track.playing && !paused { PlaybackPulse(playing: true, accent: accent).frame(width: 18, height: 18) }
+            else if !media.track.appID.isEmpty && !paused { PlaybackPulse(playing: media.track.playing, preferences: preferences).frame(width: 18, height: 18) }
             else { Circle().fill(paused ? .gray : accent).frame(width: 5, height: 5) }
         }
     }

@@ -12,11 +12,11 @@ Nexa is one native macOS application target and one XCTest target. The UI and se
 
 The borderless `NSPanel` uses `.nonactivatingPanel`. Hover calls `orderFront` and resizes without taking keyboard focus; clicking inputs can make it key. The panel physically shrinks when collapsed, avoiding a transparent expanded window intercepting clicks. Screen changes recalculate geometry from the hardware safe area and auxiliary top rectangles. The panel overrides normal window-frame constraints, uses status-bar level after setting its floating flag, and disables automatic hosting-view safe-area/sizing adjustments. Its center is the actual camera-gap center, with frame-width parity preserving centering after AppKit coordinate rounding. The header reserves the camera gap explicitly. Hardware-notch displays are preferred; otherwise the main display gets an adjustable pill. One overlay is shown, not one per display.
 
-`NotchSurfaceView` keeps persistent expanded and compact hosting views at their final layout sizes. Core Animation morphs a shape mask and fades the content layers; the native window grows once at the start and shrinks once at the end instead of forcing layout on every animation frame. Interrupted transitions begin from the presentation layer, and generation checks reject obsolete completion callbacks. The top edge and hardware center remain fixed. Appearance changes update the existing surface without rebuilding its hosting views. Home uses a shallow 192–230 point height; detailed modules expand vertically. Motion and button feedback honor Reduce Motion.
+`NotchSurfaceView` keeps persistent expanded and compact hosting views at their final layout sizes. Core Animation morphs a shape mask and fades the content layers; the native window grows once at the start and shrinks once at the end instead of forcing layout on every animation frame. Interrupted shape transitions sample the same analytic spring trajectory used by Core Animation, preserving position and velocity. Opacity retargets from presentation layers; generation checks reject obsolete completion callbacks. Spring paths are sampled once at 120 Hz per transition, without a main-thread redraw timer. The top edge and hardware center remain fixed. Appearance changes update the existing surface without rebuilding its hosting views. Home uses a shallow 192–230 point height; detailed modules expand vertically. Motion and button feedback honor Reduce Motion.
 
 Hover work is cancellable and checks the actual pointer position before acting, so tracking-area changes during expansion do not cause false exits. Menu tracking and attached sheets prevent unwanted collapse. Device, shelf and calendar refresh work is deferred until the opening animation settles; calendar reads on Home are throttled to 30 seconds. A local event monitor handles Escape, local swipe gestures and optional scroll navigation only for Nexa's window; no global input recording is used.
 
-Widget crossfades are scoped to fixed-height content containers. Native inactive hosting views return no hit target, and only the expanded view owns the share picker. Reduce Motion notifications settle in-flight native animations immediately. Controller teardown removes all screen/workspace observers and the local input monitor.
+Widget crossfades are scoped to fixed-height content containers. Native inactive hosting views return no hit target, and only the expanded view owns the share picker. OS and app-level Reduce Motion settle in-flight native animations immediately. NexaMotion centralizes preset, speed, transition and feedback timings. Display choices use public ColorSync display identifiers, retaining compatibility with older display-name preferences. Detached islands reserve the menu-bar area. Controller teardown removes all screen/workspace observers and the local input monitor.
 
 The compact and expanded masks retain the same path segment structure, following Apple's [CAShapeLayer path interpolation requirement](https://developer.apple.com/documentation/quartzcore/cashapelayer/path).
 
@@ -34,7 +34,7 @@ Storage writes are atomic. App-support directories use mode 0700 and data files 
 
 `SystemMediaBridge` owns one streaming process, reads bounded newline-delimited JSON, decodes full snapshots and base64 artwork on its background reader queue, and applies generation checks to ignore stale callbacks. `NowPlayingService` prioritizes the system-selected player, preventing a paused Music track from replacing an active browser video. A one-second visible-only tick interpolates elapsed time using the reported playback rate; metadata is event-driven. Unchanged artwork and source labels are cached. Source-specific Music/Spotify AppleScript remains available as a fallback. Commands use fixed process argument arrays, not shell interpolation. Native metadata/artwork stay local; optional fallback Spotify artwork URLs obey Local-only mode.
 
-`MirrorService` requests AVFoundation video permission only on an explicit start. A generation token cancels a pending permission/start when the panel closes. Capture configuration/start/stop are serialized off the UI thread. The preview layer is mirrored and has no recording output or microphone input. Module visibility, privacy pause and shutdown stop capture.
+`MirrorService` requests AVFoundation video permission only on an explicit start. A generation token cancels a pending permission/start when the panel closes. Device discovery and capture configuration/start/stop are serialized off the UI thread. Discovery on module entry is coalesced; permissioned starts revalidate the generation after asynchronous discovery. The preview layer is mirrored and has no recording output or microphone input. Module visibility, privacy pause and shutdown stop capture.
 
 `NotebookService` persists notes/to-dos atomically. `ShortcutsService` lists and explicitly runs named Apple Shortcuts with argument arrays. Favorite names persist locally. No shortcut is executed by startup, discovery, or tests.
 
@@ -54,7 +54,7 @@ Network calls use an ephemeral URLSession with no cookie jar or disk cache. Weat
 | Clipboard, only when enabled | 1.5 seconds, 0.5-second tolerance |
 | Media metadata | System event stream while connected |
 | Playback position, only while visible | 1 second, 0.15-second tolerance; local interpolation |
-| Playback pulse, only while playing and visible | Core Animation bars, no per-frame SwiftUI timer; stopped with Reduce Motion or pause |
+| Playback pulse, only while playing and visible | Core Animation blue bars/wave/minimal; no per-frame SwiftUI timer; stopped on pause, hidden/occluded views, disabled hosts, Reduce Motion and energy saving |
 | Camera | Only during explicit, visible Mirror use |
 | System statistics, only while visible | 5 seconds, 2-second tolerance |
 | Running timer/stopwatch | 1 second, stopped when idle |
@@ -64,3 +64,7 @@ Network calls use an ephemeral URLSession with no cookie jar or disk cache. Weat
 | Weather / AI / updates | Explicit user action |
 
 These choices target low idle use; measured results and the limits of testing belong in VALIDATION.md. Background cadence is not a promise of a fixed resource budget on every Mac.
+
+## 3.1 media compatibility exception
+
+The user explicitly chose to retain the existing private MediaRemote bridge for system-wide media coverage. New appearance and motion code uses public APIs. Electric Blue is playback-state decoration and never reads microphone or system audio samples. Its ambient gradient is local compositor decoration, not a measured music-intensity visualization.

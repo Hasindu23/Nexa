@@ -1,0 +1,9 @@
+PASS: Bars, Wave and Minimal render in the native Now Playing module with labeled sample media
+PASS: actual native visualizers stop all repeating animations on pause and in energy-saving mode
+PASS: all three presets settle after rapid reversals and module switches
+PASS: the custom Reduced Motion setting disables geometry animation
+PASS: all 17 existing module views render; permissioned integrations were not activated
+PASS: native Settings window renders Appearance & Motion
+MEASURED: isolated paused/closed island idle CPU 0.127% of one core over 61.1 seconds
+MEASURED: physical memory footprint before/after idle 93226040 / 66700320 bytes
+LIMIT: resource sample is this isolated test process; live integrations, 120 Hz rendering, full-screen Spaces and physical multiple displays need hardware testing

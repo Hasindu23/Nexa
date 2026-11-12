@@ -47,7 +47,7 @@ extension AppDelegate {
                 try verifyNotchPlacement()
                 try snapshot(notch.window!, to: output.appendingPathComponent("02-notch-preview.png"))
                 checks.append("PASS: app launched, native panel expanded and rendered")
-                checks.append(notch.geometry.hasNotch ? "PASS: expanded overlay is centered on the camera cutout and flush with the physical screen top" : "PASS: notch-free panel is centered with its 6-point top inset")
+                checks.append(notch.geometry.hasNotch ? "PASS: expanded overlay is centered on the camera cutout and flush with the physical screen top" : "PASS: notch-free panel is centered below the reserved menu-bar area")
                 let panel = notch.window!
                 click(in: panel, at: NSPoint(x: 143, y: panel.frame.height - 22))
                 try await Task.sleep(for: .milliseconds(550))
@@ -125,7 +125,7 @@ extension AppDelegate {
             }
         }
     }
-    private func snapshot(_ window: NSWindow, to url: URL) throws {
+    func snapshot(_ window: NSWindow, to url: URL) throws {
         guard let view = window.contentView else { throw NexaError.message("No content view") }
         func invalidate(_ view: NSView) { view.needsDisplay = true; view.layer?.setNeedsDisplay(); view.subviews.forEach(invalidate) }
         invalidate(view); view.layoutSubtreeIfNeeded(); window.display()
@@ -134,7 +134,7 @@ extension AppDelegate {
         guard let data = representation.representation(using: .png, properties: [:]) else { throw NexaError.message("Cannot encode preview") }
         try data.write(to: url)
     }
-    private func verifyNotchPlacement() throws {
+    func verifyNotchPlacement() throws {
         guard let panel = notch.window else { throw NexaError.message("Missing notch screen") }
         let geometry = notch.geometry
         let expected = geometry.frame(expanded: model.expanded, banner: model.banner != nil, preferences: model.preferences.value, home: model.selected == .home)
@@ -142,7 +142,7 @@ extension AppDelegate {
             throw NexaError.message("Notch position changed after display: expected \(expected), actual \(panel.frame), level \(panel.level.rawValue)")
         }
     }
-    private func click(in window: NSWindow, at point: NSPoint) {
+    func click(in window: NSWindow, at point: NSPoint) {
         window.makeKeyAndOrderFront(nil)
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             if let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0) { window.sendEvent(event) }

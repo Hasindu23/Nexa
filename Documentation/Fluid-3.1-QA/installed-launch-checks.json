@@ -1,0 +1,20 @@
+{
+  "installedVersion": "3.1.0",
+  "build": 11,
+  "path": "/Applications/Nexa.app",
+  "visibleLaunch": [
+    {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 69859,
+      "version": "3.1.0"
+    }
+  ],
+  "storedPreferencesUnchanged": true,
+  "backupArchive": "/Users/hasindu/Documents/Codex/2026-09-17/storage-cleaner-system-cleanup-module-add/work/backups/Nexa-0.6.0-before-3.1.zip",
+  "backupApp": "/Users/hasindu/Documents/Codex/2026-09-17/storage-cleaner-system-cleanup-module-add/work/backups/Nexa-0.6.0-before-3.1-62a6c505.app",
+  "strictSignature": "passed",
+  "installedExecutableMatchesRelease": true
+}

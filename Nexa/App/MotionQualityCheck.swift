@@ -23,7 +23,7 @@ extension AppDelegate {
                 notch.expand(true); try await Task.sleep(for: .milliseconds(500))
                 for index in 0..<12 { model.selected = index % 2 == 0 ? .files : .home; try await Task.sleep(for: .milliseconds(55)) }
                 model.selected = .home; notch.expand(false); try await Task.sleep(for: .milliseconds(650))
-                let geometry = NotchGeometry(screen: notch.window!.screen!)
+                let geometry = notch.geometry
                 let expected = geometry.frame(expanded: false, banner: false, preferences: model.preferences.value)
                 let actual = notch.window!.frame
                 guard abs(actual.width - expected.width) < 0.5, abs(actual.height - expected.height) < 0.5, abs(actual.midX - expected.midX) < 0.5, abs(actual.maxY - expected.maxY) < 0.5 else { throw NexaError.message("Rapid interruption left the panel in the wrong frame: \(actual)") }

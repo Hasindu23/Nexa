@@ -15,16 +15,20 @@ struct Surface<Content: View>: View {
 
 struct CapsuleButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.nexaMotion) private var motion
     @Environment(\.isEnabled) private var enabled
+    @State private var hovered = false
     var accent = Color.white
     var filled = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.system(size: 12, weight: .semibold)).padding(.horizontal, 15).padding(.vertical, 9)
             .foregroundStyle(filled ? Color.black : accent)
-            .background(filled ? accent : Color.white.opacity(configuration.isPressed ? 0.13 : 0.07), in: Capsule())
+            .background(filled ? accent : Color.white.opacity(configuration.isPressed ? 0.13 : hovered && enabled ? 0.10 : 0.07), in: Capsule())
             .opacity(!enabled ? 0.4 : configuration.isPressed ? 0.85 : 1)
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion && !motion.reduced ? 0.97 : 1)
+            .animation(reduceMotion || motion.reduced ? nil : .easeOut(duration: motion.buttonDuration), value: configuration.isPressed)
+            .animation(reduceMotion || motion.reduced ? nil : .easeOut(duration: motion.hoverDuration), value: hovered)
+            .onHover { hovered = $0 }
     }
 }
 
@@ -100,10 +104,11 @@ struct SharePicker: NSViewRepresentable {
 
 struct NotchButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.nexaMotion) private var motion
     @Environment(\.isEnabled) private var enabled
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.opacity(!enabled ? 0.4 : configuration.isPressed ? 0.7 : 1)
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.94 : 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion && !motion.reduced ? 0.96 : 1)
+            .animation(reduceMotion || motion.reduced ? nil : .easeOut(duration: motion.buttonDuration), value: configuration.isPressed)
     }
 }

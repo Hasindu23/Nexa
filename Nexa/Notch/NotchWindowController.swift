@@ -38,8 +38,8 @@ final class NotchPanel: NSPanel {
     init(model: AppModel, geometryOverride: NotchGeometry? = nil) {
         self.model = model
         self.geometryOverride = geometryOverride
-        let screen = NSScreen.screens.first(where: { $0.localizedName == model.preferences.value.preferredDisplay }) ?? NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main ?? NSScreen.screens[0]
-        geometry = geometryOverride ?? NotchGeometry(screen: screen)
+        let screen = NexaDisplays.resolve(model.preferences.value.preferredDisplay)
+        geometry = geometryOverride ?? screen.map(NotchGeometry.init(screen:)) ?? NotchGeometry(frame: NSRect(x: 0, y: 0, width: 1280, height: 800), hardwareWidth: 170, hardwareHeight: 0, menuBarHeight: 24)
         let panel = NotchPanel(contentRect: geometry.frame(expanded: false, banner: false, preferences: model.preferences.value), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         super.init(window: panel)
         panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
@@ -129,9 +129,11 @@ final class NotchPanel: NSPanel {
         }
         lastTarget = target; lastExpanded = model.expanded; lastModule = model.selected; lastRadius = config.cornerRadius
         transitionGeneration += 1; let generation = transitionGeneration
-        let duration = animated && !reduceMotion() ? (model.expanded ? 0.34 : 0.28) / max(0.5, min(2, config.animationSpeed)) : 0
+        let motion = NexaMotion(preferences: config, systemReduceMotion: reduceMotion())
+        let duration = animated ? (model.expanded ? motion.expansionDuration : model.banner != nil ? motion.notificationDuration : motion.collapseDuration) : 0
         transitionInFlight = duration > 0
-        let canvasSize = duration > 0 ? CGSize(width: max(window.frame.width, target.width), height: max(window.frame.height, target.height)) : target.size
+        let requestedCanvas = surface.requiredCanvas(target: target.size, expanded: model.expanded, hasNotch: geometry.hasNotch, preferences: config, duration: duration)
+        let canvasSize = duration > 0 ? CGSize(width: max(window.frame.width, requestedCanvas.width), height: max(window.frame.height, requestedCanvas.height)) : target.size
         let canvas = NSRect(x: target.midX - canvasSize.width / 2, y: target.maxY - canvasSize.height, width: canvasSize.width, height: canvasSize.height)
         window.hasShadow = false
         if window.frame != canvas { window.setFrame(canvas, display: false) }
@@ -153,17 +155,22 @@ final class NotchPanel: NSPanel {
         }
     }
     private func screenChanged() {
-        guard let screen = NSScreen.screens.first(where: { $0.localizedName == model.preferences.value.preferredDisplay }) ?? NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main else { return }
+        guard let screen = NexaDisplays.resolve(model.preferences.value.preferredDisplay) else { return }
         let updated = geometryOverride ?? NotchGeometry(screen: screen)
         if geometry != updated {
             geometry = updated; installContent(); layout(animated: false)
-        } else { layout(animated: true) }
+        } else { layout(animated: !(model.preferences.value.reduceMotion || reduceMotion())) }
     }
     private func installContent() {
-        hostingInstallCount += 1
         func root(expanded: Bool) -> NotchView {
             NotchView(model: model, preferences: model.preferences, hardwareHeight: geometry.hardwareHeight, hardwareWidth: geometry.hardwareWidth, hasNotch: geometry.hasNotch, expandedPresentation: expanded, toggle: { [weak self] in self?.expand(!(self?.model.expanded ?? false)) })
         }
+        if let surface {
+            surface.expandedHost.rootView = root(expanded: true)
+            surface.compactHost.rootView = root(expanded: false)
+            return
+        }
+        hostingInstallCount += 1
         surface = NotchSurfaceView(expanded: root(expanded: true), compact: root(expanded: false))
         surface.onHover = { [weak self] in self?.hover($0) }
         window?.contentView = surface

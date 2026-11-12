@@ -4,7 +4,7 @@ import QuartzCore
 struct HomeView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var preferences: PreferencesStore
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.nexaMotion) private var motion
     private var accent: Color { preferences.value.accent.color }
     var body: some View {
         GeometryReader { geometry in
@@ -19,7 +19,7 @@ struct HomeView: View {
                         ForEach(["Calendar", "Shortcuts", "Notes", "To-dos", "Timer"], id: \.self) { name in Button(name) { preferences.value.centerWidget = name } }
                     } label: { HStack(spacing: 5) { Text(preferences.value.centerWidget.uppercased()).tracking(1.4); Image(systemName: "chevron.down").font(.system(size: 7)) }.font(.system(size: 8, weight: .semibold)).foregroundStyle(.white.opacity(0.4)) }.menuStyle(.borderlessButton).fixedSize()
                     ZStack(alignment: .topLeading) { centerWidget.id(preferences.value.centerWidget).transition(.opacity) }
-                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: preferences.value.centerWidget)
+                        .animation(motion.moduleAnimation, value: preferences.value.centerWidget)
                 }.frame(width: flexible * 0.38, alignment: .topLeading)
                 Rectangle().fill(.white.opacity(0.08)).frame(width: 1).padding(.vertical, 6)
                 if preferences.value.enabledModules.contains(.mirror) { MirrorWidget(service: model.mirror, preferences: preferences, size: mirrorWidth - 6).frame(width: mirrorWidth) }
@@ -68,8 +68,8 @@ struct CompactMediaView: View {
                         transport(service.track.playing ? "pause.fill" : "play.fill", service.track.playing ? "Pause" : "Play", "playpause")
                         transport("forward.end.fill", "Next", "next track")
                         Spacer(minLength: 0)
-                        PlaybackPulse(playing: service.track.playing, accent: accent).frame(width: 19, height: 16)
-                    }.padding(.top, 2).disabled(service.demo)
+                        PlaybackPulse(playing: service.track.playing, preferences: preferences).frame(width: 19, height: 16)
+                    }.padding(.top, 2)
                     if service.track.duration > 0 { MediaScrubber(service: service, accent: accent, labels: false).padding(.top, 2) }
                     if service.demo { Text("INTERFACE PREVIEW").font(.system(size: 6, weight: .semibold)).tracking(1).foregroundStyle(.gray) }
                 }
@@ -77,7 +77,7 @@ struct CompactMediaView: View {
         }
     }
     private func transport(_ icon: String, _ title: String, _ command: String) -> some View {
-        Button { service.command(command) } label: { Image(systemName: icon).font(.system(size: 12)).frame(width: 22, height: 24) }.buttonStyle(NotchButtonStyle()).help(title).accessibilityLabel(title)
+        Button { service.command(command) } label: { Image(systemName: icon).font(.system(size: 12)).frame(width: 22, height: 24) }.buttonStyle(NotchButtonStyle()).help(title).accessibilityLabel(title).disabled(service.demo)
     }
 }
 
@@ -108,53 +108,6 @@ struct MediaScrubber: View {
                 .controlSize(.mini).tint(accent).disabled(service.demo || service.track.duration <= 0).accessibilityLabel("Playback position")
             if labels { HStack { Text((dragging ?? service.track.position).clockString); Spacer(); Text(service.track.duration.clockString) }.font(.system(size: 9, design: .monospaced)).foregroundStyle(.gray) }
         }
-    }
-}
-
-struct PlaybackPulse: View {
-    let playing: Bool
-    let accent: Color
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.isEnabled) private var enabled
-    var body: some View {
-        PlaybackBars(active: playing && !reduceMotion && enabled, color: NSColor(accent))
-            .accessibilityLabel(playing ? "Playing" : "Paused")
-    }
-}
-
-private struct PlaybackBars: NSViewRepresentable {
-    let active: Bool
-    let color: NSColor
-    func makeNSView(context: Context) -> PlaybackBarsView { PlaybackBarsView() }
-    func updateNSView(_ view: PlaybackBarsView, context: Context) { view.update(active: active, color: color) }
-}
-
-private final class PlaybackBarsView: NSView {
-    private var bars: [CALayer] = []
-    private var active = false
-    override init(frame: NSRect) {
-        super.init(frame: frame); wantsLayer = true
-        for _ in 0..<4 { let bar = CALayer(); bar.cornerRadius = 1.25; layer?.addSublayer(bar); bars.append(bar) }
-    }
-    required init?(coder: NSCoder) { fatalError() }
-    override func layout() {
-        super.layout(); CATransaction.begin(); CATransaction.setDisableActions(true)
-        for (index, bar) in bars.enumerated() { bar.bounds = CGRect(x: 0, y: 0, width: 2.5, height: max(4, bounds.height)); bar.position = CGPoint(x: bounds.midX - 6.75 + CGFloat(index) * 4.5, y: bounds.midY) }
-        CATransaction.commit()
-    }
-    func update(active: Bool, color: NSColor) {
-        CATransaction.begin(); CATransaction.setDisableActions(true)
-        for (index, bar) in bars.enumerated() {
-            bar.backgroundColor = color.cgColor
-            if active && !self.active {
-                let animation = CAKeyframeAnimation(keyPath: "transform.scale.y")
-                animation.values = [0.25, 0.8, 0.4, 1, 0.25]; animation.keyTimes = [0, 0.25, 0.5, 0.75, 1]
-                animation.duration = 0.75 + Double(index) * 0.14; animation.beginTime = CACurrentMediaTime() - Double(index) * 0.2
-                animation.repeatCount = .infinity; animation.calculationMode = .cubic
-                bar.add(animation, forKey: "nexa.playback")
-            } else if !active { bar.removeAllAnimations(); bar.transform = CATransform3DMakeScale(1, 0.25, 1) }
-        }
-        self.active = active; CATransaction.commit()
     }
 }
 
