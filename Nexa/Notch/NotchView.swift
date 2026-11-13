@@ -7,7 +7,8 @@ struct NotchView: View {
     var hardwareHeight: CGFloat = 0
     var hardwareWidth: CGFloat = 170
     var hasNotch = false
-    var expandedPresentation = false
+    var presentation = IslandPresentation.ambient
+    private var expandedPresentation: Bool { presentation == .workspace }
     var toggle: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var moduleSelection
@@ -18,27 +19,39 @@ struct NotchView: View {
         VStack(spacing: 0) {
             if expandedPresentation {
                 expandedContent
+            } else if presentation == .peek {
+                VStack(spacing: 0) {
+                    if hasNotch { Color.clear.frame(height: hardwareHeight) }
+                    PeekView(model: model, preferences: preferences)
+                }
             } else if let banner = model.banner, !model.paused {
                 VStack(spacing: 0) {
                     if hasNotch { Color.clear.frame(height: hardwareHeight) }
                     HStack(spacing: 12) {
                         Image(systemName: banner.icon).foregroundStyle(accent).font(.system(size: 18))
-                        VStack(alignment: .leading, spacing: 3) { Text(banner.title).font(.system(size: 12, weight: .semibold)); Text(banner.detail).font(.system(size: 11)).foregroundStyle(NexaStyle.secondary).lineLimit(1) }
+                        VStack(alignment: .leading, spacing: 3) { Text(banner.title).font(.system(size: 12, weight: .semibold)); Text(banner.detail).font(.system(size: 11)).foregroundStyle(NexaStyle.secondary).lineLimit(1); if let progress = banner.progress { ProgressView(value: progress).tint(accent) } }
                         Spacer()
                     }.padding(.horizontal, 20).frame(maxHeight: .infinity)
                 }.onTapGesture { model.setExpanded?(true) }
             } else {
-                CollapsedView(media: model.media, timers: model.timers, system: model.system, accent: accent, hasNotch: hasNotch, cameraWidth: cameraWidth, paused: model.paused, timerEnabled: preferences.value.enabledModules.contains(.timers), preferences: preferences)
+                CollapsedView(media: model.media, live: model.live, timers: model.timers, system: model.system, accent: accent, hasNotch: hasNotch, cameraWidth: cameraWidth, paused: model.paused, timerEnabled: preferences.value.enabledModules.contains(.timers), preferences: preferences)
                     .contentShape(Rectangle()).onTapGesture { if preferences.value.clickToOpen { toggle() } }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .foregroundStyle(.white).tint(accent).preferredColorScheme(.dark)
-        .allowsHitTesting(expandedPresentation == model.expanded)
-        .disabled(model.paused || expandedPresentation != model.expanded)
+        .allowsHitTesting(presentation == model.presentation)
+        .disabled(model.paused || presentation != model.presentation)
         .contextMenu {
             if preferences.value.rightClickMenu {
                 Button(model.expanded ? "Collapse" : "Open Nexa") { toggle() }
+                Button("Edit Workspace…") { model.setPresentation?(.workspace); model.selected = .home; model.editingWorkspace = true }
+                Menu("Display") {
+                    ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { _, screen in
+                        Button(screen.localizedName) { preferences.value.preferredDisplay = NexaDisplays.identifier(screen) }
+                    }
+                }
+                Toggle("Energy Saving", isOn: $preferences.value.energySaving)
                 Button("Settings…") { model.showSettings?() }
                 Button(model.paused ? "Resume Nexa" : "Pause Nexa") { model.togglePause() }
                 Divider(); Button("Quit Nexa") { NSApp.terminate(nil) }
@@ -49,65 +62,30 @@ struct NotchView: View {
             if expandedPresentation && model.expanded { SharePicker(items: model.sharingItems, presented: $model.showShare).frame(width: 1, height: 1) }
         }
         .environment(\.nexaMotion, motion)
-        .accessibilityIdentifier("nexa.notch")
+        .accessibilityElement(children: .contain)
     }
     private var expandedContent: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                HStack(spacing: 5) {
-                    headerTab(.home, label: "Nexa")
-                    if preferences.value.enabledModules.contains(.files) { headerTab(.files, label: "Tray") }
-                    Spacer(minLength: 0)
-                }.padding(.leading, 27).frame(maxWidth: .infinity)
+            HStack {
+                HStack(spacing: 7) { Image(systemName: "waveform").foregroundStyle(accent); Text(model.selected == .home ? "nexa" : model.selected.title).font(.system(size: 12, weight: .semibold, design: .rounded)) }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if hasNotch { Color.clear.frame(width: cameraWidth).accessibilityHidden(true) }
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Spacer(minLength: 0)
-                    Menu {
-                        ForEach(model.modules.filter { $0 != .home && $0 != .files }) { module in
-                            Button { model.selected = module } label: { Label(module.title, systemImage: module.icon) }
-                        }
-                    } label: { Image(systemName: "square.grid.2x2").font(.system(size: 12)) }.menuStyle(.borderlessButton).fixedSize().help("All widgets")
-                    IconButton(symbol: "gearshape.fill", help: "Open Settings", size: 24) { model.showSettings?() }
-                    IconButton(symbol: "chevron.up", help: "Collapse Nexa", size: 24) { model.setExpanded?(false) }
-                }.padding(.trailing, 27).frame(maxWidth: .infinity)
-            }.frame(height: max(44, hardwareHeight + 7))
-            ZStack(alignment: .top) {
-                if model.selected == .home {
-                    HomeView(model: model, preferences: preferences)
-                        .frame(height: preferences.value.homeHeight - max(44, hardwareHeight + 7)).transition(.opacity)
-                } else {
-                    detailContent
-                        .frame(height: preferences.value.expandedHeight - max(44, hardwareHeight + 7)).transition(.opacity)
-                }
-            }.animation(motion.moduleAnimation, value: model.selected)
+                    if model.selected == .home { IconButton(symbol: model.editingWorkspace ? "checkmark" : "slider.horizontal.3", help: model.editingWorkspace ? "Done editing" : "Edit Workspace", size: 25) { model.editingWorkspace.toggle() } }
+                    Menu { ForEach(model.modules) { module in Button { model.selected = module } label: { Label(module.title, systemImage: module.icon) } } } label: { Image(systemName: "square.grid.2x2") }.menuStyle(.borderlessButton).fixedSize().help("Workspaces")
+                    IconButton(symbol: "gearshape", help: "Settings", size: 25) { model.showSettings?() }
+                    IconButton(symbol: "chevron.up", help: "Collapse Nexa", size: 25) { model.setExpanded?(false) }
+                }.frame(maxWidth: .infinity)
+            }.padding(.horizontal, 29).frame(height: max(46, hardwareHeight + 10))
+            ScrollView {
+                ZStack(alignment: .top) { moduleContent.id(model.selected).transition(.opacity) }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 22)
+            }.scrollIndicators(.hidden).animation(motion.moduleAnimation, value: model.selected)
+            HStack { Text("NEXA WORKSPACE").font(.system(size: 8, weight: .semibold)).tracking(1.5); Spacer(); if let banner = model.banner { Label(banner.title, systemImage: banner.icon).font(.system(size: 10)).foregroundStyle(accent) } }
+                .foregroundStyle(.white.opacity(0.4)).padding(.horizontal, 30).frame(height: 25)
         }
-    }
-    private var detailContent: some View {
-        VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    ForEach(model.modules.filter { $0 != .home && $0 != .files }) { module in
-                        Button { model.selected = module } label: {
-                            Image(systemName: module.icon).font(.system(size: 13, weight: model.selected == module ? .semibold : .regular))
-                                .foregroundStyle(model.selected == module ? accent : .white.opacity(0.35)).frame(maxWidth: .infinity).frame(height: 32)
-                                .background { if model.selected == module { RoundedRectangle(cornerRadius: 9).fill(accent.opacity(0.12)).matchedGeometryEffect(id: "detailSelection", in: moduleSelection) } }
-                        }.buttonStyle(NotchButtonStyle()).help(module.title).accessibilityLabel(module.title).accessibilityIdentifier("module.\(module.rawValue)")
-                    }
-                }.padding(.horizontal, 29).padding(.top, 3).padding(.bottom, 9)
-                ScrollView {
-                    ZStack(alignment: .top) { moduleContent.id(model.selected).transition(.opacity) }
-                        .padding(.horizontal, 30).padding(.top, 7).padding(.bottom, 18)
-                }.scrollIndicators(.hidden)
-                HStack { Text(model.selected.title.uppercased()).font(.system(size: 8, weight: .semibold)).tracking(1.5); Spacer(); if let banner = model.banner { Label(banner.title, systemImage: banner.icon).font(.system(size: 10)).foregroundStyle(accent) } }
-                    .foregroundStyle(.white.opacity(0.3)).padding(.horizontal, 32).frame(height: 27)
-        }
-    }
-    private func headerTab(_ module: ModuleID, label: String) -> some View {
-        Button { model.selected = module } label: {
-            HStack(spacing: 5) { Image(systemName: module == .home ? "waveform" : "tray"); Text(label) }
-                .font(.system(size: 11, weight: .semibold)).padding(.horizontal, 11).padding(.vertical, 6)
-                .foregroundStyle(model.selected == module ? .white : .white.opacity(0.45))
-                .background { if model.selected == module { Capsule().fill(.white.opacity(0.12)).matchedGeometryEffect(id: "headerSelection", in: moduleSelection) } }
-        }.buttonStyle(NotchButtonStyle()).animation(motion.moduleAnimation, value: model.selected).accessibilityIdentifier("module.\(module.rawValue)")
     }
     @ViewBuilder private var moduleContent: some View {
         switch model.selected {
@@ -117,7 +95,7 @@ struct NotchView: View {
         case .todos: TodosView(service: model.notebook, accent: accent)
         case .shortcuts: ShortcutsView(service: model.shortcuts, accent: accent)
         case .music: NowPlayingView(service: model.media, controls: model.controls, preferences: preferences)
-        case .files: FileShelfView(service: model.files, dropTarget: model.dropTarget, accent: accent)
+        case .files: FileShelfView(service: model.files, exporter: model.imageExport, dropTarget: model.dropTarget, accent: accent)
         case .clipboard: ClipboardView(service: model.clipboard, preferences: preferences)
         case .calendar: CalendarModuleView(service: model.calendar, accent: accent)
         case .reminders: RemindersView(service: model.calendar, accent: accent)
@@ -128,6 +106,7 @@ struct NotchView: View {
         case .bluetooth: BluetoothView(service: model.bluetooth)
         case .weather: WeatherView(service: model.weather, preferences: preferences, settings: { model.showSettings?() })
         case .ai: AIPanelView(service: model.ai, preferences: preferences)
+        case .live: LiveActivitiesView(service: model.live) { module in model.selected = module }
         }
     }
     private func acceptDrop(_ providers: [NSItemProvider]) -> Bool {
@@ -155,6 +134,7 @@ struct NotchView: View {
 
 private struct CollapsedView: View {
     @ObservedObject var media: NowPlayingService
+    @ObservedObject var live: LiveActivityStore
     @ObservedObject var timers: TimerService
     @ObservedObject var system: SystemService
     let accent: Color
@@ -183,7 +163,8 @@ private struct CollapsedView: View {
     }
     private var leadingIndicator: some View {
         Group {
-            if let artwork = media.artwork { Image(nsImage: artwork).resizable().scaledToFill().frame(width: 18, height: 18).clipShape(RoundedRectangle(cornerRadius: 5)) }
+            if let activity = live.items.first(where: { $0.ongoing }) { Image(systemName: activity.icon).font(.system(size: 12)).foregroundStyle(accent).accessibilityLabel(activity.title) }
+            else if let artwork = media.artwork { Image(nsImage: artwork).resizable().scaledToFill().frame(width: 18, height: 18).clipShape(RoundedRectangle(cornerRadius: 5)) }
             else { Image(systemName: paused ? "pause" : "waveform").font(.system(size: 12)).foregroundStyle(accent) }
         }
     }

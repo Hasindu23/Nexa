@@ -15,6 +15,7 @@ import Combine
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var model: AppModel!
     var notch: NotchWindowController!
+    var displayEntries: DisplayEntryCoordinator?
     var storageWindow: NSWindow?
     var settingsWindow: NSWindow?
     var onboardingWindow: NSWindow?
@@ -22,6 +23,12 @@ import Combine
     private var subscriptions = Set<AnyCancellable>()
     func applicationDidFinishLaunching(_ notification: Notification) {
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return }
+        if let index = CommandLine.arguments.firstIndex(of: "--qa-benchmark"), CommandLine.arguments.count > index + 1 {
+            runWorkspaceBenchmark(output: URL(fileURLWithPath: CommandLine.arguments[index + 1])); return
+        }
+        if let index = CommandLine.arguments.firstIndex(of: "--qa-workspace"), CommandLine.arguments.count > index + 1 {
+            runWorkspaceQA(output: URL(fileURLWithPath: CommandLine.arguments[index + 1])); return
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--qa-fluid"), CommandLine.arguments.count > index + 1 {
             runFluidQA(output: URL(fileURLWithPath: CommandLine.arguments[index + 1])); return
         }
@@ -64,6 +71,7 @@ import Combine
     func setup() {
         let simulatedDisplay = model.testing && CommandLine.arguments.contains("--qa-no-notch") ? NSScreen.main.map { NotchGeometry(frame: $0.frame, hardwareWidth: 170, hardwareHeight: 0, menuBarHeight: max(NSStatusBar.system.thickness, $0.frame.maxY - $0.visibleFrame.maxY)) } : nil
         notch = NotchWindowController(model: model, geometryOverride: simulatedDisplay); notch.show()
+        if !model.testing { displayEntries = DisplayEntryCoordinator(model: model, primary: notch) }
         model.showStorage = { [weak self] in self?.showStorage() }
         model.showSettings = { [weak self] in self?.showSettings() }
         model.showOnboarding = { [weak self] in self?.showOnboarding() }
@@ -100,13 +108,18 @@ import Combine
         for (title, selector, key) in [("Undo", "undo:", "z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] { submenu.addItem(withTitle: title, action: Selector(selector), keyEquivalent: key) }
         edit.submenu = submenu; menu.addItem(edit); NSApp.mainMenu = menu
     }
-    @objc func openNotch() { if model.paused { model.togglePause() }; notch.show(); notch.expand(true) }
+    @objc func openNotch() {
+        guard let model else { return }
+        if model.paused { model.togglePause() }
+        if notch == nil { notch = NotchWindowController(model: model) }
+        notch.show(); notch.expand(true)
+    }
     @objc func pause() { model.togglePause() }
     @objc func keepAwake() { model.controls.toggleAwake() }
     @objc func quit() { NSApp.terminate(nil) }
     func showPrimaryWindow() {
         guard model != nil else { return }
-        if model.preferences.value.completedOnboarding { showStorage() } else { showOnboarding() }
+        if model.preferences.value.completedOnboarding { if storageWindow != nil { showStorage() } else { openNotch() } } else { showOnboarding() }
     }
     @objc func showStorage() {
         if storageWindow == nil {
@@ -156,5 +169,5 @@ import Combine
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showPrimaryWindow(); return true }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
-    func applicationWillTerminate(_ notification: Notification) { model?.shutdown() }
+    func applicationWillTerminate(_ notification: Notification) { displayEntries?.stop(); model?.shutdown() }
 }

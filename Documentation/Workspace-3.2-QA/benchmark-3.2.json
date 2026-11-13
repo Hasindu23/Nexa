@@ -1,0 +1,101 @@
+[
+  {
+    "cpuPercentOfOneCore" : 0.09774546010164753,
+    "footprintEndBytes" : 35472368,
+    "footprintStartBytes" : 35587056,
+    "scenario" : "collapsed",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.775017875013873,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 0,
+    "windowVisible" : true
+  },
+  {
+    "cpuPercentOfOneCore" : 0.0053242584133167264,
+    "footprintEndBytes" : 35587056,
+    "footprintStartBytes" : 35668976,
+    "scenario" : "peek",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.771731708198786,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 0,
+    "windowVisible" : true
+  },
+  {
+    "cpuPercentOfOneCore" : 0.0043377394649922636,
+    "footprintEndBytes" : 35636208,
+    "footprintStartBytes" : 35701744,
+    "scenario" : "workspace",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.702468750067055,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 0,
+    "windowVisible" : true
+  },
+  {
+    "cpuPercentOfOneCore" : 0.0070157444966649513,
+    "footprintEndBytes" : 40027144,
+    "footprintStartBytes" : 42091528,
+    "scenario" : "music-paused",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.728513708338141,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 0,
+    "windowVisible" : true
+  },
+  {
+    "cpuPercentOfOneCore" : 0.023360310663719984,
+    "footprintEndBytes" : 40092680,
+    "footprintStartBytes" : 40092680,
+    "scenario" : "visualizer-playing",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.60257212491706,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 10,
+    "windowVisible" : true
+  },
+  {
+    "cpuPercentOfOneCore" : 0.010050221501585258,
+    "footprintEndBytes" : 41075720,
+    "footprintStartBytes" : 47678472,
+    "scenario" : "drag-target",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.666387500008568,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 0,
+    "windowVisible" : true
+  },
+  {
+    "cpuPercentOfOneCore" : 0.0074469638857811845,
+    "footprintEndBytes" : 42451976,
+    "footprintStartBytes" : 42566664,
+    "scenario" : "ai-workspace",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.139175291638821,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 0,
+    "windowVisible" : true
+  },
+  {
+    "cpuPercentOfOneCore" : 0.0053605284540665411,
+    "footprintEndBytes" : 46646280,
+    "footprintStartBytes" : 46760968,
+    "scenario" : "calendar",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.759935999987647,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 0,
+    "windowVisible" : true
+  },
+  {
+    "cpuPercentOfOneCore" : 39.437495989671241,
+    "footprintEndBytes" : 104858656,
+    "footprintStartBytes" : 47891464,
+    "scenario" : "switching",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.021703916601837,
+    "version" : "3.2.0",
+    "visualizerRepeatingAnimations" : 0,
+    "windowVisible" : true
+  }
+]

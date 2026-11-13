@@ -7,17 +7,19 @@ struct SettingsView: View {
     @State private var previewPlaying = false
     @State private var displayRevision = 0
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
-    private let sections = [("General", "switch.2"), ("Appearance & Motion", "paintpalette"), ("Modules", "square.grid.2x2"), ("Gestures", "cursorarrow.motionlines"), ("Privacy", "hand.raised"), ("Weather", "cloud.sun"), ("Assistant", "sparkles"), ("About", "info.circle")]
+    private let sections = [("General", "switch.2"), ("Appearance & Motion", "paintpalette"), ("Nook & Rail", "rectangle.bottomthird.inset.filled"), ("Displays", "display.2"), ("Modules", "square.grid.2x2"), ("Gestures", "cursorarrow.motionlines"), ("Keyboard", "keyboard"), ("Privacy", "hand.raised"), ("Weather", "cloud.sun"), ("Assistant", "sparkles"), ("About", "info.circle")]
     private var accent: Color { preferences.value.accent.color }
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 10) { BrandMark(size: 34, accent: accent); VStack(alignment: .leading, spacing: 2) { Text("nexa").font(.system(size: 20, weight: .semibold, design: .rounded)); Text("A little more space.").font(.system(size: 9)).foregroundStyle(NexaStyle.secondary) } }.padding(.bottom, 26).padding(.top, 23)
+                ScrollView { VStack(alignment: .leading, spacing: 5) {
                 ForEach(sections, id: \.0) { section in
                     Button { selection = section.0 } label: {
                         HStack(spacing: 10) { Image(systemName: section.1).frame(width: 18); Text(section.0); Spacer() }.font(.system(size: 12, weight: selection == section.0 ? .medium : .regular)).foregroundStyle(selection == section.0 ? accent : .white.opacity(0.52)).padding(.horizontal, 13).padding(.vertical, 11).background(selection == section.0 ? accent.opacity(0.09) : .clear, in: RoundedRectangle(cornerRadius: 10))
                     }.buttonStyle(.plain).accessibilityIdentifier(section.0 == "Appearance & Motion" ? "settings.appearance" : "settings.\(section.0.lowercased())")
                 }
+                } }.scrollIndicators(.hidden)
                 Spacer()
                 HStack(spacing: 6) { Circle().fill(accent).frame(width: 4, height: 4); Text("MADE FOR YOUR MAC").font(.system(size: 7, weight: .semibold)).tracking(1.4) }.foregroundStyle(NexaStyle.secondary).padding(12)
             }.padding(.horizontal, 17).padding(.top, 18).padding(.bottom, 12).frame(width: 202).background(Color.black.opacity(0.25))
@@ -50,8 +52,11 @@ struct SettingsView: View {
         switch selection {
         case "General": general
         case "Appearance & Motion": appearance
+        case "Nook & Rail": nook
+        case "Displays": displays
         case "Modules": modules
         case "Gestures": gestures
+        case "Keyboard": keyboard
         case "Privacy": PrivacySettingsView(model: model, preferences: preferences)
         case "Weather": weather
         case "Assistant": AssistantSettingsView(preferences: preferences)
@@ -92,6 +97,15 @@ struct SettingsView: View {
                     .overlay(RoundedRectangle(cornerRadius: preferences.value.cornerRadius).strokeBorder(.white.opacity(preferences.value.border ? 0.12 : 0)))
                 Text("No microphone or system audio capture. Your existing accent color remains yours.").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
             }.padding(.vertical, 8)
+            SettingsGroup(title: "GLASS") {
+                Picker("Appearance", selection: $preferences.value.appearanceMode) { ForEach(NexaAppearance.allCases) { Text($0.title).tag($0) } }.pickerStyle(.segmented)
+                Picker("Glass style", selection: $preferences.value.glassStyle) { ForEach(NexaGlassStyle.allCases) { Text($0.title).tag($0) } }
+                settingSlider("Tint strength", value: $preferences.value.glassTintStrength, range: 0...1, label: "\(Int(preferences.value.glassTintStrength * 100))%")
+                settingToggle("Electric Blue reflection", detail: "A restrained blue tint in native glass.", value: $preferences.value.blueReflection)
+                settingToggle("Specular edge", detail: "Subtle edge separation without looping effects.", value: $preferences.value.specularHighlight)
+                settingToggle("Interactive glass", detail: "Native response where supported. Accessibility settings take priority.", value: $preferences.value.interactiveGlass)
+                Text("Uses native Liquid Glass on macOS 26 and later, with system material on macOS 15. Reduce Transparency and Energy Saving use an opaque surface.").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
+            }
             SettingsGroup(title: "MOTION") {
                 Picker("Animation preset", selection: $preferences.value.motionPreset) {
                     ForEach(MotionPreset.allCases) { Text($0.title).tag($0) }
@@ -111,11 +125,6 @@ struct SettingsView: View {
                 settingSlider("Glow intensity", value: $preferences.value.glowIntensity, range: 0...1, label: "\(Int(preferences.value.glowIntensity * 100))%").disabled(!preferences.value.ambientBlueGlow)
                 Text("The visualizer follows playback state, not audio frequencies. It stops moving when playback pauses or the view is hidden.").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
             }
-            SettingsGroup(title: "HOME WIDGETS") {
-                Picker("Center widget", selection: $preferences.value.centerWidget) { ForEach(["Calendar", "Shortcuts", "Notes", "To-dos", "Timer"], id: \.self) { Text($0) } }
-                displayPicker
-                Text("Home keeps media, your chosen widget and Mirror side by side. Use the grid button for all widgets.").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
-            }
             SettingsGroup(title: "THE DETAILS") {
                 HStack { Text("Accent color").font(.system(size: 12)); Spacer(); ForEach(Accent.allCases, id: \.self) { color in Button { preferences.value.accent = color } label: { Circle().fill(color.color).frame(width: 23, height: 23).overlay(Circle().strokeBorder(.black, lineWidth: preferences.value.accent == color ? 5 : 0)).overlay(Circle().strokeBorder(color.color, lineWidth: 2)) }.buttonStyle(.plain).help(color.rawValue.capitalized).accessibilityLabel(color.rawValue) } }
                 Divider()
@@ -126,6 +135,46 @@ struct SettingsView: View {
                 settingToggle("Soft shadow", value: $preferences.value.shadow)
                 settingToggle("Subtle border", value: $preferences.value.border)
                 Text("Nexa uses dark surfaces to blend with the hardware notch. Motion choices also respect macOS accessibility settings.").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
+            }
+        }
+    }
+    private var nook: some View {
+        VStack(spacing: 18) {
+            SettingsGroup(title: "YOUR WORKSPACE") {
+                Picker("Default workspace", selection: $preferences.value.defaultWorkspace) { ForEach(model.modules) { Text($0.title).tag($0) } }
+                settingToggle("Remember last workspace", value: $preferences.value.rememberWorkspace)
+                settingToggle("Show floating rail", value: $preferences.value.showWorkspaceRail)
+                Button("Edit Home widgets") { model.setPresentation?(.workspace); model.selected = .home; model.editingWorkspace = true }.buttonStyle(CapsuleButtonStyle(accent: accent))
+                Text("Hover opens a small Peek. Click or choose Open workspace to expand fully. Drag rail items to reorder, or use the arrows below.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary)
+            }
+            SettingsGroup(title: "WORKSPACE RAIL") {
+                ForEach(preferences.value.railModules) { module in
+                    HStack {
+                        Label(module.title, systemImage: module.icon); Spacer()
+                        Button { moveRail(module, by: -1) } label: { Image(systemName: "arrow.up") }.help("Move earlier")
+                        Button { moveRail(module, by: 1) } label: { Image(systemName: "arrow.down") }.help("Move later")
+                        Button("Hide") { preferences.value.railModules.removeAll { $0 == module } }
+                    }.font(.system(size: 12))
+                }
+                Menu("Add workspace") { ForEach(model.modules.filter { !preferences.value.railModules.contains($0) }) { module in Button(module.title) { preferences.value.railModules.append(module) } } }
+                Button("Reset rail") { preferences.value.railModules = AppPreferences().railModules }
+            }
+        }
+    }
+    private func moveRail(_ module: ModuleID, by offset: Int) {
+        guard let index = preferences.value.railModules.firstIndex(of: module), preferences.value.railModules.indices.contains(index + offset) else { return }
+        preferences.value.railModules.swapAt(index, index + offset)
+    }
+    private var displays: some View {
+        SettingsGroup(title: "DISPLAY ENTRY POINTS") {
+            displayPicker
+            Text("An empty selection follows your preferred display. Choose displays below to keep an entry point on each. Displays without a notch use a slim handle.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary)
+            ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { _, screen in
+                Toggle(screen.localizedName, isOn: Binding(get: { preferences.value.enabledDisplayIDs.contains(NexaDisplays.identifier(screen)) }, set: { enabled in
+                    let id = NexaDisplays.identifier(screen)
+                    preferences.value.enabledDisplayIDs.removeAll { $0 == id }
+                    if enabled { preferences.value.enabledDisplayIDs.append(id) }
+                }))
             }
         }
     }
@@ -152,6 +201,23 @@ struct SettingsView: View {
             }
         }
     }
+    private var keyboard: some View {
+        SettingsGroup(title: "KEYBOARD SHORTCUTS") {
+            Text("Choose Command plus Option or Control to avoid common app shortcuts. Nexa registers only these combinations; it does not monitor your typing. Shortcuts are off until you assign them.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary)
+            ForEach(WorkspaceAction.allCases) { action in
+                HStack {
+                    Text(action.title).font(.system(size: 12)); Spacer()
+                    ShortcutRecorder(label: preferences.value.workspaceShortcuts.first(where: { $0.action == action })?.label ?? "Record…") { code, modifiers, label in
+                        preferences.value.workspaceShortcuts.removeAll { $0.action == action || $0.keyCode == code && $0.modifiers == modifiers }
+                        preferences.value.workspaceShortcuts.append(WorkspaceShortcut(action: action, keyCode: code, modifiers: modifiers, label: label))
+                    } recording: { preferences.recordingShortcut = $0 }.frame(width: 170, height: 28)
+                    Button("Clear") { preferences.value.workspaceShortcuts.removeAll { $0.action == action } }.font(.caption)
+                }
+            }
+            if let manager = model.keyboard { ShortcutFailures(manager: manager) }
+            Text("Within Nexa, Command–1 through Command–7 selects a visible rail item. Escape closes the workspace.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary)
+        }
+    }
     private var gestures: some View {
         SettingsGroup(title: "HOW NEXA RESPONDS") {
             settingToggle("Haptic feedback", detail: "A subtle trackpad tap when the notch opens or closes.", value: $preferences.value.hapticFeedback)
@@ -160,7 +226,8 @@ struct SettingsView: View {
             settingToggle("Drag and drop", detail: "Bring files, images and text to the notch.", value: $preferences.value.dragAndDrop)
             settingToggle("Right-click menu", value: $preferences.value.rightClickMenu)
             settingToggle("Scroll to switch modules", detail: "Replaces content scrolling while over the notch.", value: $preferences.value.scrollCyclesModules)
-            Text("Swipe horizontally over Nexa to change tracks, or vertically to open and close. Press Escape to collapse. Opening on hover leaves your current app focused; click an input to type.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary).lineSpacing(3)
+            settingToggle("Swipe gestures", detail: "Horizontal swipes switch workspaces. Vertical swipes open or close.", value: $preferences.value.swipeGestures)
+            Text("Press Escape to collapse. Command–1 through Command–7 selects a visible rail item while Nexa has focus. Opening on hover leaves your current app focused; click an input to type.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary).lineSpacing(3)
         }
     }
     private var weather: some View {
@@ -192,4 +259,13 @@ struct SettingsGroup<Content: View>: View {
 struct LoginSetting: View {
     @ObservedObject var service: QuickControlsService
     var body: some View { VStack(alignment: .leading, spacing: 5) { settingToggle("Launch at login", detail: "A familiar space, every time you start.", value: Binding(get: { service.loginEnabled }, set: { service.login($0) })); InlineError(text: service.error) } }
+}
+
+private struct ShortcutFailures: View {
+    @ObservedObject var manager: WorkspaceShortcutManager
+    var body: some View {
+        ForEach(WorkspaceAction.allCases.filter { manager.failures[$0] != nil }) { action in
+            Text("\(action.title): \(manager.failures[action] ?? "")").font(.system(size: 11)).foregroundStyle(.orange)
+        }
+    }
 }

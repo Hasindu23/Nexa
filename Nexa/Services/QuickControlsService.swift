@@ -8,6 +8,7 @@ import ServiceManagement
 import ApplicationServices
 
 @MainActor final class QuickControlsService: ObservableObject {
+    var onVolumeChanged: ((Double) -> Void)?
     @Published var volume: Double = 0
     @Published var volumeAvailable = false
     @Published var muted = false
@@ -44,7 +45,7 @@ import ApplicationServices
         queryGeneration += 1
         var value = Float32(min(1, max(0, newValue)))
         var address = AudioObjectPropertyAddress(mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume, mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
-        if AudioObjectSetPropertyData(device, &address, 0, nil, 4, &value) == noErr { volume = Double(value) }
+        if AudioObjectSetPropertyData(device, &address, 0, nil, 4, &value) == noErr { volume = Double(value); onVolumeChanged?(volume) }
         else { error = "This output device manages its own volume." }
     }
     func toggleMute() {

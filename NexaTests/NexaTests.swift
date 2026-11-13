@@ -23,7 +23,7 @@ final class NexaTests: XCTestCase {
     @MainActor func testShelfNeverDeletesOriginalAndPersists() async throws {
         let store = try temporaryStore(); let file = store.root.appendingPathComponent("original.txt")
         try "hello".write(to: file, atomically: true, encoding: .utf8)
-        let shelf = FileShelfService(store: store); shelf.add([file, file])
+        let shelf = FileShelfService(store: store); shelf.add([file, file]); await shelf.waitForImports()
         XCTAssertEqual(shelf.items.count, 1)
         XCTAssertEqual(FileShelfService(store: store).items.count, 1)
         shelf.clear()
@@ -34,9 +34,9 @@ final class NexaTests: XCTestCase {
         let store = try temporaryStore(); let file = store.root.appendingPathComponent("expiry.txt")
         try Data([1]).write(to: file)
         let shelf = FileShelfService(store: store); shelf.expiryHours = 1
-        let now = Date(); shelf.add([file], now: now); shelf.prune(now: now.addingTimeInterval(3601))
+        let now = Date(); shelf.add([file], now: now); await shelf.waitForImports(); shelf.prune(now: now.addingTimeInterval(3601))
         XCTAssertTrue(shelf.items.isEmpty); XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
-        shelf.configure(persistent: false, expiryHours: 0); shelf.add([file])
+        shelf.configure(persistent: false, expiryHours: 0); shelf.add([file]); await shelf.waitForImports()
         XCTAssertEqual(shelf.items.count, 1); XCTAssertTrue(FileShelfService(store: store).items.isEmpty)
     }
     @MainActor func testClipboardConcealedPauseDedupeAndRecopy() async throws {
@@ -175,12 +175,12 @@ final class NexaTests: XCTestCase {
         let mirror = MirrorService(); XCTAssertFalse(mirror.active); XCTAssertFalse(mirror.starting); XCTAssertFalse(mirror.session.isRunning)
         mirror.stop(); XCTAssertFalse(mirror.active)
     }
-    func testHomeIsShallowAndRetainsCameraCenterAcrossSizes() {
+    func testHomeSharesWorkspaceSizeAndRetainsCameraCenterAcrossSizes() {
         let geometry = NotchGeometry(frame: NSRect(x: 0, y: 0, width: 1710, height: 1112), hardwareWidth: 209, hardwareHeight: 38, hardwareCenterX: 855.5)
         for size in ["Compact", "Normal", "Large"] {
             var preferences = AppPreferences(); preferences.layout = size
             let home = geometry.frame(expanded: true, banner: false, preferences: preferences, home: true)
-            XCTAssertLessThan(home.height, 240); XCTAssertEqual(home.maxY, 1112); XCTAssertEqual(home.midX, 855.5)
+            XCTAssertEqual(home.height, preferences.expandedHeight); XCTAssertEqual(home.maxY, 1112); XCTAssertEqual(home.midX, 855.5)
         }
     }
 
@@ -202,7 +202,7 @@ final class NexaTests: XCTestCase {
         let window = try XCTUnwrap(controller.window)
         let geometry = NotchGeometry(screen: try XCTUnwrap(window.screen))
         XCTAssertFalse(controller.transitionInFlight)
-        XCTAssertEqual(window.frame, geometry.frame(expanded: true, banner: false, preferences: model.preferences.value, home: true))
+        XCTAssertEqual(window.frame, geometry.frame(presentation: .workspace, banner: false, preferences: model.preferences.value))
         controller.expand(false); try await Task.sleep(for: .milliseconds(420))
         XCTAssertEqual(window.frame, geometry.frame(expanded: false, banner: false, preferences: model.preferences.value))
         XCTAssertFalse(controller.transitionInFlight)
@@ -356,7 +356,7 @@ final class NexaTests: XCTestCase {
         XCTAssertEqual(controller.window?.frame.size, NSSize(width: 170, height: 30))
         XCTAssertEqual(controller.window?.frame.maxY, screen.frame.maxY - 6)
         controller.expand(true)
-        XCTAssertEqual(controller.window?.frame.height, model.preferences.value.homeHeight)
+        XCTAssertEqual(controller.window?.frame.height, geometry.frame(presentation: .workspace, banner: false, preferences: model.preferences.value).height)
         model.preferences.value.layout = "Large"; model.preferences.value.horizontalOffset = 70
         try await Task.sleep(for: .milliseconds(120))
         XCTAssertFalse(controller.geometry.hasNotch)

@@ -1,0 +1,31 @@
+{
+  "installedVersion": "3.2.0",
+  "build": 12,
+  "path": "/Applications/Nexa.app",
+  "normalIconLaunch": [
+    {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 86209,
+      "version": "3.2.0"
+    }
+  ],
+  "repeatLaunchSingleInstance": [
+    {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 86209,
+      "version": "3.2.0"
+    }
+  ],
+  "existingPreferencesPreserved": true,
+  "notesTasksStoragePreserved": true,
+  "backupArchive": "/Users/hasindu/Documents/Codex/2026-09-17/storage-cleaner-system-cleanup-module-add/work/backups/Nexa-3.1-before-3.2-4ae920af.zip",
+  "backupApp": "/Users/hasindu/Documents/Codex/2026-09-17/storage-cleaner-system-cleanup-module-add/work/backups/Nexa-3.1-before-3.2-4ae920af.app",
+  "strictSignature": "passed",
+  "installedExecutableMatchesRelease": true
+}

@@ -17,7 +17,7 @@ extension AppDelegate {
             do {
                 try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
                 model.media.loadDemo(playing: true)
-                model.selected = .music; notch.expand(true)
+                notch.expand(true); model.selected = .music
                 notch.window?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
                 try await Task.sleep(for: .milliseconds(650))
                 try verifyNotchPlacement()
@@ -83,7 +83,7 @@ extension AppDelegate {
                 model.media.loadDemo(playing: false)
                 notch.expand(false)
                 try await Task.sleep(for: .milliseconds(500))
-                model.notify("A little more flow", detail: "Nexa 3.1 notification preview", icon: "sparkles", priority: true)
+                model.notify("A little more flow", detail: "Nexa 3.2 notification preview", icon: "sparkles", priority: true)
                 try await Task.sleep(for: .milliseconds(500))
                 try snapshot(notch.window!, to: output.appendingPathComponent("notification.png"))
                 model.banner = nil
@@ -118,7 +118,7 @@ extension AppDelegate {
         guard getrusage(RUSAGE_SELF, &usage) == 0 else { return nil }
         return Double(usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) + Double(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / 1_000_000
     }
-    private static func fluidRenderers(in view: NSView) -> [ElectricBlueVisualizerView] {
+    static func fluidRenderers(in view: NSView) -> [ElectricBlueVisualizerView] {
         (view as? ElectricBlueVisualizerView).map { [$0] } ?? view.subviews.flatMap { fluidRenderers(in: $0) }
     }
 }

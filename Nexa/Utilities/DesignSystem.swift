@@ -4,8 +4,8 @@ import AppKit
 enum NexaStyle {
     static let canvas = Color(red: 0.055, green: 0.060, blue: 0.065)
     static let surface = Color.white.opacity(0.045)
-    static let line = Color.white.opacity(0.075)
-    static let secondary = Color.white.opacity(0.48)
+    static var line: Color { Color.white.opacity(NexaAccessibility.increaseContrast ? 0.38 : 0.075) }
+    static var secondary: Color { Color.white.opacity(NexaAccessibility.increaseContrast ? 0.78 : 0.48) }
 }
 
 struct Surface<Content: View>: View {

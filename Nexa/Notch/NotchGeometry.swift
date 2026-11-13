@@ -40,4 +40,20 @@ struct NotchGeometry: Equatable {
         let x = min(max(centerX - width / 2 + offset, screenFrame.minX), screenFrame.maxX - width)
         return NSRect(x: x, y: screenFrame.maxY - height - inset, width: width, height: height)
     }
+    func frame(presentation: IslandPresentation, banner: Bool, preferences: AppPreferences) -> NSRect {
+        if presentation == .ambient { return frame(expanded: false, banner: banner, preferences: preferences) }
+        var result = frame(expanded: true, banner: false, preferences: preferences)
+        let top = result.maxY
+        if presentation == .peek {
+            let requestedWidth = min(result.width, 420)
+            result.size.width = hasNotch ? min(screenFrame.width, 2 * (hardwareCenterX - floor(hardwareCenterX - requestedWidth / 2))) : requestedWidth
+            result.origin.x = min(max(hardwareCenterX - result.width / 2 + (hasNotch ? 0 : preferences.horizontalOffset), screenFrame.minX), screenFrame.maxX - result.width)
+            result.size.height = min(result.height, ceil(max(164, hardwareHeight + 136)))
+        } else {
+            result.size.height = min(screenFrame.height - (hasNotch ? 0 : detachedTopInset), result.height + WorkspaceLayout.railExtent(preferences, presentation: presentation))
+        }
+        result.origin.y = top - result.height
+        return result
+    }
+
 }

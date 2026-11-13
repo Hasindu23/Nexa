@@ -1,0 +1,5 @@
+PASS: all workspaces render inside the same native shell
+PASS: 8 cycles, 24 reversals, 20 switches and 10 Peek/Workspace pairs settle without replacing hosts
+PASS: glass styles, Classic Black, Energy Saving and Reduced Motion render
+PASS: the charcoal workspace keeps its dark native material in Light and Dark system appearance
+PASS: Mirror workspace discovery did not start camera capture

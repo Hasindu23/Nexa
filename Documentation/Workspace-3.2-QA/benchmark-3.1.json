@@ -1,0 +1,74 @@
+[
+  {
+    "cpuPercentOfOneCore" : 0.025159255327340719,
+    "footprintEndBytes" : 29951008,
+    "footprintStartBytes" : 32867360,
+    "scenario" : "collapsed",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.277787874918431,
+    "version" : "3.1.0"
+  },
+  {
+    "cpuPercentOfOneCore" : 0.061375559473005784,
+    "footprintEndBytes" : 30229536,
+    "footprintStartBytes" : 30262304,
+    "scenario" : "workspace",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.219847874948755,
+    "version" : "3.1.0"
+  },
+  {
+    "cpuPercentOfOneCore" : 0.49188464776298479,
+    "footprintEndBytes" : 36127776,
+    "footprintStartBytes" : 37798944,
+    "scenario" : "music-paused",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.761121999938041,
+    "version" : "3.1.0"
+  },
+  {
+    "cpuPercentOfOneCore" : 0.19181377017705736,
+    "footprintEndBytes" : 36127776,
+    "footprintStartBytes" : 36193312,
+    "scenario" : "visualizer-playing",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.747259999858215,
+    "version" : "3.1.0"
+  },
+  {
+    "cpuPercentOfOneCore" : 0.22622711590262778,
+    "footprintEndBytes" : 37864480,
+    "footprintStartBytes" : 46466080,
+    "scenario" : "drag-target",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.274390666745603,
+    "version" : "3.1.0"
+  },
+  {
+    "cpuPercentOfOneCore" : 3.4924383605747198,
+    "footprintEndBytes" : 45401120,
+    "footprintStartBytes" : 96306208,
+    "scenario" : "ai-workspace",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.000927624991164,
+    "version" : "3.1.0"
+  },
+  {
+    "cpuPercentOfOneCore" : 5.607410015592758,
+    "footprintEndBytes" : 46072888,
+    "footprintStartBytes" : 46269496,
+    "scenario" : "calendar",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.58709454163909,
+    "version" : "3.1.0"
+  },
+  {
+    "cpuPercentOfOneCore" : 34.257888530419947,
+    "footprintEndBytes" : 97436728,
+    "footprintStartBytes" : 45237304,
+    "scenario" : "switching",
+    "scope" : "Isolated UI; sample media, no connected AI session, no real drag or network activity. Not display FPS.",
+    "seconds" : 12.016873124986887,
+    "version" : "3.1.0"
+  }
+]

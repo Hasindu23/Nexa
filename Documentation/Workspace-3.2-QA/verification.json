@@ -1,0 +1,43 @@
+{
+  "version": "3.2.0",
+  "build": 12,
+  "testedOS": "27.0",
+  "runtimeArchitecture": "arm64",
+  "architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "automatedTests": 114,
+  "failedTests": 0,
+  "originalCases": 95,
+  "newCases": 19,
+  "nativeStorageMemory": "passed",
+  "nativeApp": "passed",
+  "nativeNoNotch": "passed",
+  "nativeMotion": "passed",
+  "nativeFluid": "passed",
+  "nativeWorkspace": "passed",
+  "nativeDetachedWorkspace": "passed",
+  "charcoalGlassLightAndDark": "passed",
+  "sourceStorageAndMemoryLogic": "11 files byte-identical to 3.1",
+  "strictCodeSignature": "passed",
+  "dmgIntegrity": "passed",
+  "mountedContentsMatchRelease": true,
+  "installedLaunch": "passed",
+  "repeatLaunchSingleInstance": "passed",
+  "existingPreferencesPreserved": true,
+  "notesTasksStoragePreserved": true,
+  "installedExecutableMatchesRelease": true,
+  "dmgSHA256": "6876173b91c2bacb823b3310630402308bdbd5b357fa0678731e463c7d176c03",
+  "appleNotarized": false,
+  "userFilesCleaned": false,
+  "benchmarkScope": "isolated UI, not rendered FPS or live integration performance",
+  "limitations": [
+    "No attached competitor reference screenshots for direct visual comparison",
+    "Physical external-display hotplug and fullscreen Spaces require hardware checks",
+    "Intel and macOS 15/26 runtime checks not performed",
+    "Live permissioned calendar, camera, media and network AI integrations not exercised",
+    "External Codex/Claude sessions and approvals are not connected",
+    "Native view exports cannot establish wallpaper diffusion or every compositor frame"
+  ]
+}

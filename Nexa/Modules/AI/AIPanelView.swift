@@ -7,7 +7,19 @@ struct AIPanelView: View {
     @State private var language = "English"
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack { Text("A second thought.").font(.system(size: 21, weight: .medium)); Spacer(); Button("Clear") { service.clear() }.buttonStyle(.plain).font(.system(size: 10)) }
+            HStack { Text("Nexa Assistant").font(.system(size: 21, weight: .medium)); Spacer(); Button("Clear") { service.clear() }.buttonStyle(.plain).font(.system(size: 10)) }
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles").foregroundStyle(preferences.value.accent.color)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(service.currentAction.isEmpty ? "Your connected OpenAI session" : service.currentAction).font(.system(size: 11, weight: .medium)).lineLimit(1)
+                    Text(service.sessionState).font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
+                }
+                Spacer()
+                if let start = service.startedAt {
+                    if service.busy { TimelineView(.periodic(from: .now, by: 1)) { context in Text(max(0, context.date.timeIntervalSince(start)).clockString).monospacedDigit().font(.caption) } }
+                    else if let end = service.finishedAt { Text(max(0, end.timeIntervalSince(start)).clockString).monospacedDigit().font(.caption) }
+                }
+            }.padding(13).background(NexaStyle.surface, in: RoundedRectangle(cornerRadius: 14))
             Text("Only the text below is sent to OpenAI when you press Send. Your API account is billed by OpenAI.").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
             HStack {
                 Picker("Action", selection: $action) { ForEach(["Summarize", "Rewrite", "Explain", "Translate"], id: \.self) { Text($0) } }.labelsHidden().frame(width: 135)
@@ -24,6 +36,7 @@ struct AIPanelView: View {
             }
             if !service.output.isEmpty { Text(service.output).font(.system(size: 12)).textSelection(.enabled).padding(12).frame(maxWidth: .infinity, alignment: .leading).background(NexaStyle.surface, in: RoundedRectangle(cornerRadius: 11)); Button("Copy response") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(service.output, forType: .string) }.font(.system(size: 10)) }
             InlineError(text: service.error)
+            Text("External agent sessions are not connected. Nexa does not approve commands in other apps.").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
         }
     }
 }

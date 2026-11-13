@@ -1,0 +1,16 @@
+{
+  "unchangedFrom31": [
+    "Nexa/Modules/StorageCleaner/DiskExplorer.swift",
+    "Nexa/Modules/StorageCleaner/StorageService.swift",
+    "Nexa/Modules/StorageCleaner/DiskExplorerView.swift",
+    "Nexa/Modules/StorageCleaner/StorageCleanerView.swift",
+    "Nexa/Modules/StorageCleaner/StorageSafety.swift",
+    "Nexa/Modules/StorageCleaner/StorageEngine.swift",
+    "Nexa/Modules/StorageCleaner/StorageScanner.swift",
+    "Nexa/Modules/StorageCleaner/StorageModels.swift",
+    "Nexa/Modules/StorageCleaner/StorageIntegrations.swift",
+    "Nexa/Modules/SystemStats/MemoryService.swift",
+    "Nexa/Modules/SystemStats/MemoryView.swift"
+  ],
+  "result": "byte-identical"
+}

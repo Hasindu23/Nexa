@@ -2,9 +2,35 @@ import EventKit
 import AppKit
 import Combine
 
+struct CalendarEvent: Identifiable, Sendable {
+    let calendarItemIdentifier: String
+    let calendarItemExternalIdentifier: String?
+    let eventIdentifier: String?
+    let title: String?
+    let startDate: Date
+    let endDate: Date
+    let isAllDay: Bool
+    let red: Double, green: Double, blue: Double
+    var id: String { calendarItemIdentifier + ":" + String(startDate.timeIntervalSince1970) }
+    var color: NSColor { NSColor(red: red, green: green, blue: blue, alpha: 1) }
+    init(_ event: EKEvent) {
+        calendarItemIdentifier = event.calendarItemIdentifier
+        calendarItemExternalIdentifier = event.calendarItemExternalIdentifier
+        eventIdentifier = event.eventIdentifier; title = event.title
+        startDate = event.startDate; endDate = event.endDate; isAllDay = event.isAllDay
+        let color = NSColor(cgColor: event.calendar.cgColor)?.usingColorSpace(.sRGB) ?? .systemBlue
+        red = color.redComponent; green = color.greenComponent; blue = color.blueComponent
+    }
+}
+
 @MainActor final class CalendarService: ObservableObject {
-    @Published private(set) var events: [EKEvent] = []
+    @Published private(set) var events: [CalendarEvent] = []
     @Published private(set) var reminders: [EKReminder] = []
+    @Published private(set) var monthEvents: [CalendarEvent] = []
+    @Published private(set) var displayedMonth = Date()
+    private var eventGeneration = 0
+    private var monthGeneration = 0
+    private let eventQueue = DispatchQueue(label: "app.nexa.event-query", qos: .userInitiated)
     @Published var calendarAccess = false
     @Published var reminderAccess = false
     @Published var error: String?
@@ -30,11 +56,20 @@ import Combine
     func refresh() {
         calendarAccess = EKEventStore.authorizationStatus(for: .event) == .fullAccess
         reminderAccess = EKEventStore.authorizationStatus(for: .reminder) == .fullAccess
+        eventGeneration += 1; let eventToken = eventGeneration
         if calendarAccess && calendarEnabled {
-            let now = Date()
-            events = store.events(matching: store.predicateForEvents(withStart: now, end: now.addingTimeInterval(7 * 86400), calendars: nil))
-                .filter { $0.endDate > now }.sorted { $0.startDate < $1.startDate }
-        } else { events = [] }
+            eventQueue.async { [weak self] in
+                let eventStore = EKEventStore()
+                let now = Date()
+                let values = eventStore.events(matching: eventStore.predicateForEvents(withStart: now, end: now.addingTimeInterval(7 * 86400), calendars: nil))
+                    .filter { $0.endDate > now }.sorted { $0.startDate < $1.startDate }.map(CalendarEvent.init)
+                DispatchQueue.main.async {
+                    guard let self, self.calendarEnabled, self.eventGeneration == eventToken else { return }
+                    self.events = values
+                }
+            }
+            loadMonth(displayedMonth)
+        } else { events = []; monthGeneration += 1; monthEvents = [] }
         reminderGeneration += 1; let generation = reminderGeneration
         if reminderAccess && remindersEnabled {
             store.fetchReminders(matching: store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)) { [weak self] values in
@@ -44,6 +79,18 @@ import Combine
                 }
             }
         } else { reminders = [] }
+    }
+    func loadMonth(_ date: Date) {
+        displayedMonth = date; monthGeneration += 1; let token = monthGeneration
+        guard calendarAccess, calendarEnabled, let interval = Calendar.current.dateInterval(of: .month, for: date) else { monthEvents = []; return }
+        eventQueue.async { [weak self] in
+            let eventStore = EKEventStore()
+            let values = eventStore.events(matching: eventStore.predicateForEvents(withStart: interval.start, end: interval.end, calendars: nil)).sorted { $0.startDate < $1.startDate }.map(CalendarEvent.init)
+            DispatchQueue.main.async {
+                guard let self, self.calendarEnabled, self.monthGeneration == token else { return }
+                self.monthEvents = values
+            }
+        }
     }
     func complete(_ reminder: EKReminder) {
         reminder.isCompleted = true
@@ -57,7 +104,7 @@ import Combine
         if dueToday { reminder.dueDateComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date()) }
         do { try store.save(reminder, commit: true); refresh() } catch { self.error = error.localizedDescription }
     }
-    func open(_ event: EKEvent) {
+    func open(_ event: CalendarEvent) {
         guard let uid = event.calendarItemExternalIdentifier else {
             if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.iCal") { NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) }
             return

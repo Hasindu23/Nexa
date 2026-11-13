@@ -5,35 +5,109 @@ struct HomeView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var preferences: PreferencesStore
     @Environment(\.nexaMotion) private var motion
+    @State private var availableWidth: CGFloat = 680
     private var accent: Color { preferences.value.accent.color }
     var body: some View {
-        GeometryReader { geometry in
-            let mirrorWidth: CGFloat = preferences.value.layout == "Compact" ? 92 : 108
-            let flexible = geometry.size.width - mirrorWidth - 54
-            HStack(spacing: 13) {
-                CompactMediaView(service: model.media, preferences: preferences, enabled: preferences.value.enabledModules.contains(.music)) { model.selected = .music }
-                    .frame(width: flexible * 0.62)
-                Rectangle().fill(.white.opacity(0.08)).frame(width: 1).padding(.vertical, 6)
-                VStack(alignment: .leading, spacing: 9) {
-                    Menu {
-                        ForEach(["Calendar", "Shortcuts", "Notes", "To-dos", "Timer"], id: \.self) { name in Button(name) { preferences.value.centerWidget = name } }
-                    } label: { HStack(spacing: 5) { Text(preferences.value.centerWidget.uppercased()).tracking(1.4); Image(systemName: "chevron.down").font(.system(size: 7)) }.font(.system(size: 8, weight: .semibold)).foregroundStyle(.white.opacity(0.4)) }.menuStyle(.borderlessButton).fixedSize()
-                    ZStack(alignment: .topLeading) { centerWidget.id(preferences.value.centerWidget).transition(.opacity) }
-                        .animation(motion.moduleAnimation, value: preferences.value.centerWidget)
-                }.frame(width: flexible * 0.38, alignment: .topLeading)
-                Rectangle().fill(.white.opacity(0.08)).frame(width: 1).padding(.vertical, 6)
-                if preferences.value.enabledModules.contains(.mirror) { MirrorWidget(service: model.mirror, preferences: preferences, size: mirrorWidth - 6).frame(width: mirrorWidth) }
-                else { Button { model.showSettings?() } label: { Label("Widgets", systemImage: "square.grid.2x2").font(.system(size: 11)).foregroundStyle(.gray) }.buttonStyle(.plain).frame(width: mirrorWidth) }
-            }.frame(maxHeight: .infinity, alignment: .center)
-        }.padding(.horizontal, 30).padding(.top, 4).padding(.bottom, 19)
+        VStack(alignment: .leading, spacing: 15) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Your Mac. In the moment.").font(.system(size: 25, weight: .medium)).tracking(-0.6)
+                    Text(Date(), format: .dateTime.weekday(.wide).month(.wide).day()).font(.system(size: 11)).foregroundStyle(NexaStyle.secondary)
+                }
+                Spacer()
+                if model.editingWorkspace {
+                    Menu("Add widget") {
+                        ForEach(model.modules.filter { ![ModuleID.home, .ai, .storage, .reminders, .controls, .clipboard, .weather, .bluetooth, .files].contains($0) && !preferences.value.homeWidgets.map(\.module).contains($0) }) { module in
+                            Button(module.title) { if preferences.value.homeWidgets.count < 8 { preferences.value.homeWidgets.append(HomeWidget(module: module)) } }
+                        }
+                    }.disabled(preferences.value.homeWidgets.count >= 8)
+                    Button("Reset") { preferences.value.homeWidgets = HomeWidget.defaults }
+                }
+            }
+            if model.editingWorkspace { Text("Drag widgets to reorder. Choose Compact, Regular or Wide from a widget’s menu. Up to eight widgets.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary) }
+            let widgets = preferences.value.homeWidgets.filter { preferences.value.enabledModules.contains($0.module) }
+            let columns = availableWidth < 520 ? 1 : availableWidth >= 760 ? 3 : 2
+            let rows = HomeWidgetGrid.rows(widgets, columns: columns)
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(row) { widget in
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Label(widget.module.title.uppercased(), systemImage: widget.module.icon).font(.system(size: 9, weight: .semibold)).tracking(0.7).foregroundStyle(accent)
+                                Spacer()
+                                if model.editingWorkspace {
+                                    Menu {
+                                        ForEach(HomeWidget.Size.allCases, id: \.self) { size in Button(size.rawValue.capitalized) { if let index = preferences.value.homeWidgets.firstIndex(where: { $0.id == widget.id }) { preferences.value.homeWidgets[index].size = size } } }
+                                        Button("Hide widget") { preferences.value.homeWidgets.removeAll { $0.id == widget.id } }
+                                    } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).fixedSize()
+                                } else { Button { model.selected = widget.module } label: { Image(systemName: "arrow.up.right").font(.system(size: 9)) }.buttonStyle(.plain).help("Open \(widget.module.title)") }
+                            }
+                            widgetContent(widget)
+                        }.padding(15).frame(maxWidth: .infinity, minHeight: row.allSatisfy { $0.size == .compact } ? 100 : 132, alignment: .topLeading)
+                            .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 18))
+                            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.white.opacity(0.08)))
+                            .onDrag { WorkspaceDrag.provider(widget.module, type: WorkspaceDrag.widgetType) }
+                            .onDrop(of: [WorkspaceDrag.widgetType], isTargeted: nil) { providers in
+                                guard model.editingWorkspace else { return false }
+                                return WorkspaceDrag.read(providers, type: WorkspaceDrag.widgetType) { source in
+                                    let ids = WorkspaceLayout.move(source, before: widget.module, in: preferences.value.homeWidgets.map(\.module))
+                                    preferences.value.homeWidgets = ids.compactMap { id in preferences.value.homeWidgets.first(where: { $0.module == id }) }
+                                }
+                            }
+                    }
+                }
+            }
+            if widgets.isEmpty { EmptyModule(icon: "square.grid.2x2", title: "Make this space yours", detail: "Choose Edit Workspace to add your first widget.") }
+        }.onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
     }
-    @ViewBuilder private var centerWidget: some View {
-        switch preferences.value.centerWidget {
-        case "Shortcuts": HomeShortcuts(service: model.shortcuts, enabled: preferences.value.enabledModules.contains(.shortcuts), accent: accent) { model.selected = .shortcuts }
-        case "Notes": HomeNotes(service: model.notebook, todos: false, accent: accent) { model.selected = .notes }
-        case "To-dos": HomeNotes(service: model.notebook, todos: true, accent: accent) { model.selected = .todos }
-        case "Timer": HomeTimer(service: model.timers, enabled: preferences.value.enabledModules.contains(.timers), accent: accent) { model.selected = .timers }
-        default: HomeCalendar(service: model.calendar, enabled: preferences.value.enabledModules.contains(.calendar), accent: accent) { model.selected = .calendar }
+    @ViewBuilder private func widgetContent(_ widget: HomeWidget) -> some View {
+        switch widget.module {
+        case .music: CompactMediaView(service: model.media, preferences: preferences, enabled: true, compact: widget.size != .wide) { model.selected = .music }
+        case .system: HomeMetrics(service: model.system)
+        case .calendar: HomeCalendar(service: model.calendar, enabled: true, accent: accent) { model.selected = .calendar }
+        case .timers: HomeTimer(service: model.timers, enabled: true, accent: accent) { model.selected = .timers }
+        case .todos, .notes: HomeNotes(service: model.notebook, todos: widget.module == .todos, accent: accent) { model.selected = widget.module }
+        case .shortcuts: HomeShortcuts(service: model.shortcuts, enabled: true, accent: accent) { model.selected = .shortcuts }
+        case .mirror: Button("Open Mirror") { model.selected = .mirror }.buttonStyle(CapsuleButtonStyle(accent: accent))
+        case .live: HomeActivity(service: model.live)
+        default: Button("Open \(widget.module.title)") { model.selected = widget.module }
+        }
+    }
+}
+
+struct HomeWidgetGrid {
+    static func rows(_ widgets: [HomeWidget], columns: Int) -> [[HomeWidget]] {
+        var rows: [[HomeWidget]] = [], row: [HomeWidget] = []
+        for widget in widgets.prefix(8) {
+            if widget.size == .wide {
+                if !row.isEmpty { rows.append(row); row = [] }
+                rows.append([widget])
+            } else {
+                row.append(widget)
+                if row.count >= max(1, columns) { rows.append(row); row = [] }
+            }
+        }
+        if !row.isEmpty { rows.append(row) }
+        return rows
+    }
+}
+
+private struct HomeMetrics: View {
+    @ObservedObject var service: SystemService
+    var body: some View {
+        HStack(spacing: 22) {
+            VStack(alignment: .leading, spacing: 6) { Text(service.cpuAvailable ? String(format: "%.0f%%", service.cpu) : "—").font(.system(size: 27, weight: .light)).monospacedDigit(); Text("CPU").font(.system(size: 9)).foregroundStyle(NexaStyle.secondary) }
+            VStack(alignment: .leading, spacing: 6) { Text(service.memoryAvailable ? String(format: "%.0f%%", service.memory) : "—").font(.system(size: 27, weight: .light)).monospacedDigit(); Text("MEMORY IN USE").font(.system(size: 9)).foregroundStyle(NexaStyle.secondary) }
+        }
+        Text(service.battery.map { "Battery \($0)%" } ?? "\(service.freeStorage) available").font(.system(size: 10)).foregroundStyle(NexaStyle.secondary)
+    }
+}
+private struct HomeActivity: View {
+    @ObservedObject var service: LiveActivityStore
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(service.items.first?.title ?? "All quiet").font(.system(size: 15, weight: .medium))
+            Text(service.items.first?.detail ?? "Your next Nexa activity will appear here.").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary).lineLimit(3)
         }
     }
 }
@@ -42,12 +116,13 @@ struct CompactMediaView: View {
     @ObservedObject var service: NowPlayingService
     @ObservedObject var preferences: PreferencesStore
     let enabled: Bool
+    var compact = false
     var open: () -> Void
     private var accent: Color { preferences.value.accent.color }
     var body: some View {
         HStack(spacing: 13) {
             Button(action: open) {
-                MediaArtwork(service: service, accent: accent).frame(width: preferences.value.layout == "Compact" ? 80 : 98, height: preferences.value.layout == "Compact" ? 92 : 110)
+                MediaArtwork(service: service, accent: accent).frame(width: compact ? 56 : preferences.value.layout == "Compact" ? 80 : 98, height: compact ? 76 : preferences.value.layout == "Compact" ? 92 : 110)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
                     .overlay(alignment: .bottomTrailing) {
                         if let icon = service.sourceIcon {
@@ -70,8 +145,8 @@ struct CompactMediaView: View {
                         Spacer(minLength: 0)
                         PlaybackPulse(playing: service.track.playing, preferences: preferences).frame(width: 19, height: 16)
                     }.padding(.top, 2)
-                    if service.track.duration > 0 { MediaScrubber(service: service, accent: accent, labels: false).padding(.top, 2) }
-                    if service.demo { Text("INTERFACE PREVIEW").font(.system(size: 6, weight: .semibold)).tracking(1).foregroundStyle(.gray) }
+                    if !compact && service.track.duration > 0 { MediaScrubber(service: service, accent: accent, labels: false).padding(.top, 2) }
+                    if service.demo && !compact { Text("INTERFACE PREVIEW").font(.system(size: 6, weight: .semibold)).tracking(1).foregroundStyle(.gray) }
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
         }

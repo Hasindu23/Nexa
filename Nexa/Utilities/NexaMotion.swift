@@ -88,7 +88,9 @@ struct NexaMorph {
                               widthVelocity: w.velocity, heightVelocity: h.velocity, radiusVelocity: r.velocity, shoulderVelocity: s.velocity)
     }
     var samples: [NexaMorphState] {
-        let count = max(2, Int(ceil(duration * 120)))
+        // Fixed numerical resolution describes the curve, not a display cadence.
+        // Core Animation interpolates these values at the display's refresh rate.
+        let count = 80
         return (0...count).map { sample(duration * Double($0) / Double(count)) }
     }
 }

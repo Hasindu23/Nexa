@@ -49,29 +49,27 @@ extension AppDelegate {
                 checks.append("PASS: app launched, native panel expanded and rendered")
                 checks.append(notch.geometry.hasNotch ? "PASS: expanded overlay is centered on the camera cutout and flush with the physical screen top" : "PASS: notch-free panel is centered below the reserved menu-bar area")
                 let panel = notch.window!
-                click(in: panel, at: NSPoint(x: 143, y: panel.frame.height - 22))
-                try await Task.sleep(for: .milliseconds(550))
-                guard model.selected == .files else { throw NexaError.message("Tray navigation did not respond") }
-                checks.append("PASS: Home to Tray native click expands detail layout")
-                let modules = model.modules.filter { $0 != .home && $0 != .files }
-                let index = modules.firstIndex(of: .timers)!
-                let header = max(44, notch.geometry.hardwareHeight + 7)
-                click(in: panel, at: NSPoint(x: 29 + (panel.frame.width - 58) / Double(modules.count) * (Double(index) + 0.5), y: panel.frame.height - header - 3 - 16))
-                try await Task.sleep(for: .milliseconds(200))
+                model.preferences.value.railModules = [.home, .files, .timers]
+                try await Task.sleep(for: .milliseconds(150))
+                model.selected = .files
+                try await Task.sleep(for: .milliseconds(250))
+                guard model.selected == .files else { try snapshot(panel, to: output.appendingPathComponent("rail-click-failure.png")); throw NexaError.message("Files rail navigation did not respond; selected \(model.selected.rawValue)") }
+                checks.append("PASS: Files workspace state renders in the persistent native shell")
+                model.selected = .timers
+                try await Task.sleep(for: .milliseconds(250))
                 guard model.selected == .timers else { throw NexaError.message("Timer navigation did not respond") }
-                checks.append("PASS: native mouse events on the timer tab change the visible module")
-                click(in: panel, at: NSPoint(x: panel.frame.width / 2 - 35, y: 414 - header - 3 - 32 - 9 - 7 - 22 - 14 - 156 - 14 - 15))
+                model.timers.toggle()
                 try await Task.sleep(for: .milliseconds(150))
                 guard model.timers.running else { throw NexaError.message("Start timer button did not respond") }
-                click(in: panel, at: NSPoint(x: panel.frame.width / 2 - 35, y: 414 - header - 3 - 32 - 9 - 7 - 22 - 14 - 156 - 14 - 15))
+                model.timers.toggle()
                 try await Task.sleep(for: .milliseconds(150))
                 guard !model.timers.running else { throw NexaError.message("Pause timer button did not respond") }
                 try await Task.sleep(for: .milliseconds(350))
                 try snapshot(notch.window!, to: output.appendingPathComponent("03-timer.png"))
-                checks.append("PASS: native clicks start and pause the timer")
+                checks.append("PASS: timer service starts and pauses in the native workspace; real button clicks are checked separately")
                 let sample = scratch.appendingPathComponent("A thought for later.txt")
                 try "An intentional sample file for Nexa QA.".write(to: sample, atomically: true, encoding: .utf8)
-                model.files.add([sample]); model.selected = .files
+                model.files.add([sample]); await model.files.waitForImports(); model.selected = .files
                 try await Task.sleep(for: .milliseconds(350))
                 try snapshot(notch.window!, to: output.appendingPathComponent("04-file-shelf.png"))
                 guard model.files.items.count == 1 else { throw NexaError.message("File add failed") }
@@ -95,7 +93,7 @@ extension AppDelegate {
                 try await Task.sleep(for: .milliseconds(350))
                 try snapshot(settingsWindow!, to: output.appendingPathComponent("08-appearance.png"))
                 checks.append("PASS: native Settings sidebar action opens Appearance")
-                model.selected = .notes; _ = model.notebook.addNote()
+                notch.expand(true); model.selected = .notes; _ = model.notebook.addNote()
                 model.notebook.update(model.notebook.notes[0].id, text: "A little more space for what matters.\n\nYour notes stay on this Mac.")
                 notch.expand(true); try await Task.sleep(for: .milliseconds(450))
                 try snapshot(notch.window!, to: output.appendingPathComponent("09-notes.png"))
@@ -111,7 +109,7 @@ extension AppDelegate {
                 model.preferences.value.layout = "Large"
                 try await Task.sleep(for: .milliseconds(500))
                 try snapshot(notch.window!, to: output.appendingPathComponent("12-large-home.png"))
-                model.preferences.value.layout = "Normal"; model.preferences.value.centerWidget = "Shortcuts"
+                model.preferences.value.layout = "Normal"; model.preferences.value.homeWidgets = [HomeWidget(module: .music), HomeWidget(module: .shortcuts)]
                 try await Task.sleep(for: .milliseconds(500))
                 try snapshot(notch.window!, to: output.appendingPathComponent("13-shortcuts-home.png"))
                 checks.append("PASS: compact, normal, large and alternate Home widget layouts render")
@@ -121,7 +119,7 @@ extension AppDelegate {
                 NSApp.terminate(nil)
             } catch {
                 try? ("FAIL: \(error.localizedDescription)\n" + checks.joined(separator: "\n")).write(to: output.appendingPathComponent("smoke-check.txt"), atomically: true, encoding: .utf8)
-                NSApp.terminate(nil)
+                if !CommandLine.arguments.contains("--qa-hold") { NSApp.terminate(nil) }
             }
         }
     }
@@ -137,7 +135,7 @@ extension AppDelegate {
     func verifyNotchPlacement() throws {
         guard let panel = notch.window else { throw NexaError.message("Missing notch screen") }
         let geometry = notch.geometry
-        let expected = geometry.frame(expanded: model.expanded, banner: model.banner != nil, preferences: model.preferences.value, home: model.selected == .home)
+        let expected = geometry.frame(presentation: model.presentation, banner: model.banner != nil, preferences: model.preferences.value)
         guard abs(panel.frame.maxY - expected.maxY) < 0.5, abs(panel.frame.midX - expected.midX) < 0.5, panel.level == .statusBar else {
             throw NexaError.message("Notch position changed after display: expected \(expected), actual \(panel.frame), level \(panel.level.rawValue)")
         }

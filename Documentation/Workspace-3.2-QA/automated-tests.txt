@@ -1,0 +1,6 @@
+Nexa 3.2.0 build 12
+114 tests executed, 0 failures.
+Command: xcodebuild -project Nexa.xcodeproj -scheme Nexa -configuration Debug -derivedDataPath /tmp/Nexa32Build -destination platform=macOS,arch=arm64 test
+Result bundle: /tmp/Nexa32Build/Logs/Test/Test-Nexa-2026.11.13_08-46-59--0500.xcresult
+Includes the original 95 cases and 19 new cases. Existing geometry assertions reflect the requested consistent workspace size; shelf tests await background imports.
+No new Swift compiler warnings. Apple AppIntents metadata extraction is skipped because this app does not use AppIntents. Some macOS service and fixture-path diagnostics occur; all assertions pass.

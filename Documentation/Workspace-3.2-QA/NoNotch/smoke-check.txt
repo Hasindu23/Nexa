@@ -1,0 +1,14 @@
+Nexa native application smoke check
+PASS: app launched, native panel expanded and rendered
+PASS: notch-free panel is centered below the reserved menu-bar area
+PASS: Files workspace state renders in the persistent native shell
+PASS: timer service starts and pauses in the native workspace; real button clicks are checked separately
+PASS: shelf add and clear preserve the original file
+PASS: collapse physically shrinks the window hit area
+PASS: notch-free overlay collapses to a compact floating pill
+PASS: settings window opens and renders
+PASS: native Settings sidebar action opens Appearance
+PASS: Mirror remains off when opened; no camera permission was requested
+PASS: compact, normal, large and alternate Home widget layouts render
+
+Screenshots 01–13 are rendered from the running native app. Music is explicitly marked as sample preview content. No user clipboard, calendar data, media permissions, network or API keys were used.

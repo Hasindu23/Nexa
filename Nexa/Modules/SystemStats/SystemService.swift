@@ -6,6 +6,8 @@ import Darwin
 @MainActor final class SystemService: ObservableObject {
     @Published private(set) var battery: Int?
     @Published private(set) var charging = false
+    @Published private(set) var cpuAvailable = false
+    @Published private(set) var memoryAvailable = false
     @Published private(set) var cpu = 0.0
     @Published private(set) var memory = 0.0
     @Published private(set) var freeStorage = "—"
@@ -59,6 +61,7 @@ import Darwin
                 let now = [load.cpu_ticks.0, load.cpu_ticks.1, load.cpu_ticks.2, load.cpu_ticks.3]
                 let before = [previous.cpu_ticks.0, previous.cpu_ticks.1, previous.cpu_ticks.2, previous.cpu_ticks.3]
                 let diffs = zip(now, before).map { Double($0 &- $1) }; let total = diffs.reduce(0, +)
+                cpuAvailable = total > 0
                 cpu = total > 0 ? (1 - diffs[2] / total) * 100 : 0
             }
             previous = load
@@ -66,10 +69,14 @@ import Darwin
         var vm = vm_statistics64(); var vmCount = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
         let vmResult = withUnsafeMutablePointer(to: &vm) { ptr in ptr.withMemoryRebound(to: integer_t.self, capacity: Int(vmCount)) { host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &vmCount) } }
         if vmResult == KERN_SUCCESS {
+            memoryAvailable = true
             let used = UInt64(vm.active_count) + UInt64(vm.wire_count) + UInt64(vm.compressor_page_count)
             memory = Double(used * UInt64(vm_kernel_page_size)) / Double(ProcessInfo.processInfo.physicalMemory) * 100
         }
-        if let values = try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory()), let free = values[.systemFreeSize] as? Int64 { freeStorage = ByteCountFormatter.string(fromByteCount: free, countStyle: .file) }
+        Task { [weak self] in
+            let free = await Task.detached(priority: .utility) { (try? FileManager.default.attributesOfFileSystem(forPath: NSHomeDirectory()))?[.systemFreeSize] as? Int64 }.value
+            if let free { self?.freeStorage = ByteCountFormatter.string(fromByteCount: free, countStyle: .file) }
+        }
         switch ProcessInfo.processInfo.thermalState { case .nominal: thermal = "Nominal"; case .fair: thermal = "Warm"; case .serious: thermal = "Hot"; case .critical: thermal = "Critical"; @unknown default: thermal = "Unknown" }
     }
 }

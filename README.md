@@ -2,6 +2,8 @@
 
 **A little more space.** An original native macOS notch companion built with Swift, SwiftUI and AppKit. No Electron, accounts, analytics, license checks or runtime downloads.
 
+Version **3.2.0 — Liquid Glass Workspace** adds Ambient, Peek and Workspace states, native glass with a macOS 15 fallback, a persistent floating rail, customizable Home widgets, a month Calendar, richer local Tasks, and real Nexa Live Activities. It preserves the storage and memory safety logic. See the [3.2 release notes and validation](Documentation/RELEASE-3.2.md).
+
 Version **3.1.0 — Fluid Motion & Electric Blue** upgrades the existing island with continuous spring motion, three decorative blue visualizer styles, optional ambient glow, and persistent Appearance & Motion settings. Existing modules, saved data and preferences remain included. See the [3.1 release notes and validation](Documentation/RELEASE-3.1.md).
 
 The existing system-wide MediaRemote integration is retained by explicit user choice as a private-API exception. The new visualizer captures no audio and is labeled decorative. Reduce Motion and energy saving stop its repeating animations.
@@ -10,7 +12,7 @@ The existing system-wide MediaRemote integration is retained by explicit user ch
 
 Version **0.6.0** adds focused **Review removable files** actions and a **Memory & apps** page with confirmed normal app quitting and scan-memory release. **Disk Space Explorer** provides a folder map with hidden Library/dot folders, largest-file search, metadata-only analysis and separate snapshot inventory. See the [Disk Space Explorer guide](Documentation/DISK-EXPLORER.md). Storage Cleaner is available from the Nexa menu bar menu or its widget. See the [Storage Cleaner guide and verified scope](Documentation/STORAGE-CLEANER.md) and [validation report](Documentation/STORAGE-VALIDATION.md).
 
-Install Nexa at **`/Applications/Nexa.app`**. A normal icon launch opens a visible Nexa window, and reopening restores closed, minimized or off-screen windows. Repeat launches reuse the running instance. See the [0.6.0 validation and release notes](Documentation/FINAL-0.6.0.md).
+Install Nexa at **`/Applications/Nexa.app`**. A normal icon launch opens the Nexa workspace. Storage Cleaner, Explorer, Memory and Settings remain available from the menu bar. Repeat launches reuse the running instance. See the [3.2 validation and release notes](Documentation/RELEASE-3.2.md).
 
 The existing notch companion remains included. Version 0.3.0 introduced the earlier polish pass. It adds quicker hover response, uninterrupted menu opening, widget crossfades and consistent button feedback. Device reads and media decoding run away from the interface thread. Inactive layers no longer intercept clicks or create duplicate share pickers; Reduce Motion takes effect during an active transition. Existing custom gesture timing, permissions and saved data are preserved.
 
@@ -24,16 +26,16 @@ The Storage Cleaner screenshot is rendered by the running app using generated QA
 
 ## Start using it
 
-1. Quit any older running Nexa, open the supplied **Nexa-3.1.0.dmg**, drag **Nexa** to **Applications**, then open it.
+1. Quit any older running Nexa, open the supplied **Nexa-3.2.0.dmg**, drag **Nexa** to **Applications**, then open it.
 2. Follow the welcome flow or select **Set up later**. No private-data permission is requested automatically.
 3. Hover over or click the top-center notch. On a Mac without a notch, use the top pill.
 4. Use the waveform menu bar icon for Open Nexa, Pause, Keep Awake, Settings and Quit.
-5. Select **Storage Cleaner…** from Nexa’s menu bar menu to open the new module. Home has media, a configurable center widget and Mirror. The grid button opens all widgets; Tray holds files.
-6. Click **Mirror** to grant Camera access and start a preview. Click again to stop; collapsing Nexa also stops the camera.
-7. Choose Shortcuts in the center widget menu, then star shortcuts in the Shortcuts module.
-8. Drop files into Tray; select several to copy or AirDrop, or use the eye button for Quick Look.
+5. Use the floating rail to switch workspaces. **Edit Workspace** customizes Home widgets; **More** opens the remaining modules. Storage Cleaner opens from its workspace or the menu bar.
+6. Open Mirror, then explicitly start its preview to grant Camera access. Opening the workspace alone does not capture. Collapsing Nexa stops capture.
+7. Add the Shortcuts widget in **Edit Workspace**, then star shortcuts in the Shortcuts workspace.
+8. Drop files into Files/Pocket; select several to copy or AirDrop, use the eye button for Quick Look, or export a new PNG/JPEG. Clearing Pocket preserves the originals.
 
-Clipboard capture, media connection, camera use, Bluetooth, Weather and Assistant connections are opt-in. Local-only mode is on by default. The app continues running after you close its windows. Reopening the app brings back Storage Cleaner, or the welcome window if setup is incomplete, including if you have hidden the menu bar icon.
+Clipboard capture, media connection, camera use, Bluetooth, Weather and Assistant connections are opt-in. Local-only mode is on by default. The app continues running after you close its windows. Reopening restores an existing Storage Cleaner window, otherwise it opens the workspace or the welcome window if setup is incomplete, including when the menu bar icon is hidden.
 
 This is a locally signed development build, not a notarized commercial release. The included source is the reproducible path for other Macs; distributing to other users requires your own Developer ID signing and notarization. No developer account is needed to build and run locally.
 
@@ -55,7 +57,7 @@ Nexa automatically uses a small rounded panel below the menu bar at the top cent
 | Shortcuts | List and run Apple Shortcuts, favorite two for Home, explicit stop control |
 | File shelf | Original-file references, Quick Look previews/thumbnails, multiple-file selection, copy/paste, direct AirDrop drop zone, Finder reveal, native sharing, drag out, deduplication, expiry, session-only or persistent shelf |
 | Clipboard | Opt-in local text/URL/image/file history, search, pin, copy again, delete/clear, privacy pause, size limits, standard concealed/transient type filtering |
-| Calendar | EventKit permission, next seven days, time until event, five-minute banners, opening events through Calendar automation |
+| Calendar | EventKit permission, month grid and selected-day schedule, time until event, five-minute banners, opening events through Calendar automation |
 | Reminders | Permission-based list, due-today filter, complete, create in the default list, optional due-today date |
 | Timers | 5/15/25-minute presets, custom duration up to 24 hours, pause/resume/reset, stopwatch, deadline-based countdown, completion banner and optional sound |
 | Quick controls | Output volume/mute where supported, Wi-Fi power status, keep awake, screenshot toolbar, optional Accessibility-backed lock shortcut, system settings shortcuts |
@@ -64,11 +66,11 @@ Nexa automatically uses a small rounded panel below the menu bar at the top cent
 | Weather | Optional Open-Meteo request, chosen coordinates, temperature/condition/high/low, Celsius/Fahrenheit, manual refresh |
 | Assistant | Optional OpenAI Responses API, user key in Keychain, reviewable input, summarize/rewrite/explain/translate, cancel, copy response |
 | Sharing | macOS ShareLink / sharing picker for files, dropped images and text; destinations depend on available system services |
-| Settings | General, appearance, modules, gestures, privacy, weather, assistant, About, manual configurable release-feed checker |
+| Settings | Glass, motion, Home and rail, displays, optional keyboard shortcuts, modules, gestures, privacy, weather, Assistant, About and manual release-feed checker |
 
 ## Build and test
 
-Requirements: macOS 15+, Xcode 16+ with macOS SDK, Swift 5 language mode or newer compiler. This project was built and tested with Xcode 26.6 on Apple Silicon, macOS 26.5.1. The deployment target is macOS 15; earlier supported OS versions and Intel require separate device validation.
+Build requirements: Xcode 27.2 with its macOS 27.2 SDK; Swift 5 language mode. This release was built and tested on Apple Silicon, macOS 27.0. The app runs on macOS 15+. The deployment target is macOS 15; earlier supported OS versions and Intel require separate device validation.
 
 Open `Nexa.xcodeproj`, select **Nexa → My Mac**, and Run. Signing defaults to **Sign to Run Locally**; there are no package downloads. A vendored BSD-licensed MediaRemote Adapter is compiled from source by a build phase; no separate package manager is needed.
 

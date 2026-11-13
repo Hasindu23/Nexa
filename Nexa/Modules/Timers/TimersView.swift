@@ -16,6 +16,7 @@ struct TimersView: View {
                 }.frame(width: 151, height: 151)
                 VStack(alignment: .leading, spacing: 14) {
                     if mode == 0 {
+                        HStack { Button("Focus · 25m") { service.startTimer(seconds: 25 * 60) }; Button("Break · 5m") { service.startTimer(seconds: 5 * 60) } }.font(.system(size: 11)).buttonStyle(CapsuleButtonStyle(accent: accent))
                         Text("A MOMENT FOR…").font(.system(size: 8, weight: .semibold)).tracking(1.8).foregroundStyle(NexaStyle.secondary)
                         HStack(spacing: 7) { ForEach([5, 15, 25], id: \.self) { value in Button("\(value)m") { service.startTimer(seconds: Double(value) * 60) }.buttonStyle(CapsuleButtonStyle(accent: accent)) } }
                         HStack { TextField("Minutes", text: $minutes).textFieldStyle(.roundedBorder).frame(width: 60); Text("min").font(.system(size: 11)).foregroundStyle(NexaStyle.secondary); Button("Set") { if let value = Double(minutes), value > 0 { service.startTimer(seconds: value * 60) } }.buttonStyle(CapsuleButtonStyle(accent: accent)).disabled(Double(minutes).map { !$0.isFinite || $0 <= 0 || $0 > 1440 } ?? true) }
@@ -23,7 +24,7 @@ struct TimersView: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.padding(.top, 5)
             HStack(spacing: 10) {
-                Button(mode == 0 ? service.running ? "Pause timer" : "Start timer" : service.stopwatchRunning ? "Pause stopwatch" : "Start stopwatch") { if mode == 0 { service.toggle() } else { service.toggleStopwatch() } }.buttonStyle(CapsuleButtonStyle(accent: accent, filled: true))
+                Button(mode == 0 ? service.running ? "Pause timer" : "Start timer" : service.stopwatchRunning ? "Pause stopwatch" : "Start stopwatch") { if mode == 0 { service.toggle() } else { service.toggleStopwatch() } }.buttonStyle(CapsuleButtonStyle(accent: accent, filled: true)).accessibilityIdentifier("timer.toggle")
                 Button("Reset") { if mode == 0 { service.reset() } else { service.resetStopwatch() } }.buttonStyle(CapsuleButtonStyle())
             }
         }

@@ -8,14 +8,15 @@ import QuartzCore
     override var isFlipped: Bool { true }
     let expandedHost: NotchHostingView
     let compactHost: NotchHostingView
+    let peekHost: NotchHostingView
+    let railHost: NSHostingView<WorkspaceRail>
     private let surface = FlippedSurface()
-    private let backdrop = NSVisualEffectView()
-    private let tint = NSView()
+    private let backdrop = NexaGlassSurface()
     private let maskLayer = CAShapeLayer()
     private let borderLayer = CAShapeLayer()
     private var tracking: NSTrackingArea?
     var onHover: ((Bool) -> Void)?
-    private var lastExpanded = false
+    private var lastPresentation = IslandPresentation.ambient
     private var canvasSize = CGSize.zero
     private var dropTarget = false
     private(set) var renderedSize = CGSize.zero
@@ -37,20 +38,24 @@ import QuartzCore
                       height: ceil(max(target.height, samples.map(\.height).max() ?? target.height)) + 2)
     }
 
-    init(expanded: NotchView, compact: NotchView) {
+    init(expanded: NotchView, compact: NotchView, peek: NotchView, rail: WorkspaceRail) {
         expandedHost = NotchHostingView(rootView: expanded)
         compactHost = NotchHostingView(rootView: compact)
+        peekHost = NotchHostingView(rootView: peek)
+        railHost = NSHostingView(rootView: rail)
         super.init(frame: .zero)
-        wantsLayer = true; surface.wantsLayer = true; tint.wantsLayer = true
+        wantsLayer = true; surface.wantsLayer = true
         addSubview(surface)
-        backdrop.material = .hudWindow; backdrop.blendingMode = .behindWindow; backdrop.state = .active
-        surface.addSubview(backdrop); surface.addSubview(tint)
-        for host in [expandedHost, compactHost] {
+        surface.addSubview(backdrop)
+        for host in [expandedHost, compactHost, peekHost] {
             host.safeAreaRegions = []; host.sizingOptions = []; host.wantsLayer = true
             surface.addSubview(host)
         }
         expandedHost.layer?.opacity = 0; expandedHost.isHidden = true
         expandedHost.acceptsInteraction = false
+        peekHost.isHidden = true; peekHost.acceptsInteraction = false; peekHost.layer?.opacity = 0
+        railHost.safeAreaRegions = []; railHost.sizingOptions = []; railHost.wantsLayer = true
+        railHost.isHidden = true; railHost.layer?.opacity = 0; addSubview(railHost)
         surface.layer?.mask = maskLayer
         borderLayer.fillColor = nil; borderLayer.lineWidth = 1
         surface.layer?.addSublayer(borderLayer)
@@ -70,25 +75,33 @@ import QuartzCore
     override func mouseEntered(with event: NSEvent) { onHover?(true) }
     override func mouseExited(with event: NSEvent) { onHover?(false) }
 
-    func render(canvas: CGSize, target: CGSize, expandedSize: CGSize, compactSize: CGSize,
-                expanded: Bool, hasNotch: Bool, preferences: AppPreferences, module: ModuleID,
+    func render(canvas: CGSize, target: CGSize, expandedSize: CGSize, compactSize: CGSize, peekSize: CGSize,
+                presentation: IslandPresentation, hasNotch: Bool, preferences: AppPreferences, module: ModuleID,
                 duration: TimeInterval, completion: @escaping () -> Void) {
+        let expanded = presentation.isOpen
         let now = CACurrentMediaTime()
         let current = currentState(at: now)
         let destination = targetState(target, expanded: expanded, hasNotch: hasNotch, preferences: preferences)
-        let opening = expanded && !lastExpanded, closing = !expanded && lastExpanded
+        let opening = presentation != lastPresentation && expanded, closing = !expanded && lastPresentation.isOpen
         let liftOrigin = expandedHost.isHidden ? -5.0 : (expandedHost.layer?.presentation()?.value(forKeyPath: "transform.translation.y") as? Double ?? 0)
-        lastExpanded = expanded; canvasSize = canvas; renderedSize = target
+        lastPresentation = presentation; canvasSize = canvas; renderedSize = target
 
         CATransaction.begin(); CATransaction.setDisableActions(true)
         surface.frame = CGRect(origin: .zero, size: canvas)
-        backdrop.frame = surface.bounds; tint.frame = surface.bounds
+        backdrop.frame = surface.bounds
         // A collapsed notch is opaque, so sampling the desktop behind it is wasted work.
-        updateAppearance(expanded: expanded, hasNotch: hasNotch, preferences: preferences)
+        updateAppearance(expanded: expanded || closing && duration > 0, hasNotch: hasNotch, preferences: preferences)
         expandedHost.frame = CGRect(x: (canvas.width - expandedSize.width) / 2, y: 0, width: expandedSize.width, height: expandedSize.height)
         compactHost.frame = CGRect(x: (canvas.width - compactSize.width) / 2, y: 0, width: compactSize.width, height: compactSize.height)
-        expandedHost.isHidden = false; compactHost.isHidden = false
-        expandedHost.acceptsInteraction = expanded; compactHost.acceptsInteraction = !expanded
+        peekHost.frame = CGRect(x: (canvas.width - peekSize.width) / 2, y: 0, width: peekSize.width, height: peekSize.height)
+        let railWidth = min(650, expandedSize.width - 28)
+        railHost.frame = CGRect(x: (canvas.width - railWidth) / 2, y: target.height + WorkspaceLayout.railGap, width: railWidth, height: WorkspaceLayout.railHeight)
+        let showRail = presentation == .workspace && preferences.showWorkspaceRail
+        railHost.isHidden = false
+        for host in [expandedHost, compactHost, peekHost] { host.isHidden = false }
+        expandedHost.acceptsInteraction = presentation == .workspace
+        compactHost.acceptsInteraction = presentation == .ambient
+        peekHost.acceptsInteraction = presentation == .peek
         maskLayer.frame = surface.bounds; borderLayer.frame = surface.bounds
         let path = Self.path(size: target, canvasWidth: canvas.width, radius: expanded ? preferences.cornerRadius : 14, shoulder: hasNotch && expanded ? 15 : 0, detached: !hasNotch)
         maskLayer.path = path; borderLayer.path = path
@@ -100,12 +113,20 @@ import QuartzCore
                 Self.path(size: CGSize(width: max(1, state.width), height: max(1, state.height)), canvasWidth: canvas.width,
                           radius: max(0, state.radius), shoulder: max(0, state.shoulder), detached: !hasNotch)
             }
+            if let layer = railHost.layer {
+                let railMotion = CAKeyframeAnimation(keyPath: "transform.translation.y")
+                railMotion.values = curve.samples.map { $0.height - target.height }
+                railMotion.duration = duration; railMotion.beginTime = now; railMotion.calculationMode = .linear
+                layer.add(railMotion, forKey: "nexa.rail.position")
+            }
             animation.duration = duration; animation.beginTime = now; animation.calculationMode = .linear
             maskLayer.add(animation, forKey: "nexa.morph"); borderLayer.add(animation, forKey: "nexa.morph")
         } else { morph = nil; maskLayer.removeAllAnimations(); borderLayer.removeAllAnimations() }
         settledState = destination
-        animateOpacity(expandedHost.layer!, to: expanded ? 1 : 0, duration: duration * (closing ? 0.34 : 0.8), delay: opening ? duration * 0.08 : 0)
-        animateOpacity(compactHost.layer!, to: expanded ? 0 : 1, duration: duration * 0.5, delay: closing ? duration * 0.32 : 0)
+        animateOpacity(expandedHost.layer!, to: presentation == .workspace ? 1 : 0, duration: duration * (closing ? 0.34 : 0.8), delay: opening ? duration * 0.08 : 0)
+        animateOpacity(compactHost.layer!, to: presentation == .ambient ? 1 : 0, duration: duration * 0.5, delay: closing ? duration * 0.32 : 0)
+        animateOpacity(peekHost.layer!, to: presentation == .peek ? 1 : 0, duration: duration * 0.5, delay: 0)
+        animateOpacity(railHost.layer!, to: showRail ? 1 : 0, duration: duration * (showRail ? 0.65 : 0.25), delay: showRail ? duration * 0.12 : 0)
         if opening, duration > 0 {
             let lift = CABasicAnimation(keyPath: "transform.translation.y")
             lift.fromValue = liftOrigin; lift.toValue = 0; lift.duration = duration
@@ -115,26 +136,27 @@ import QuartzCore
         CATransaction.commit()
         // Completion is generation-checked by the controller. Retargets sample
         // the same analytic trajectory used by the compositor, including velocity.
-        if duration == 0 { finish(expanded: expanded); completion() }
+        if duration == 0 { finish(presentation: presentation); completion() }
         else { DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.015) { completion() } }
     }
-    func finish(expanded: Bool) {
+    func finish(presentation: IslandPresentation) {
         morph = nil
         CATransaction.begin(); CATransaction.setDisableActions(true)
         maskLayer.removeAllAnimations(); borderLayer.removeAllAnimations()
-        expandedHost.layer?.removeAllAnimations(); compactHost.layer?.removeAllAnimations()
-        expandedHost.layer?.opacity = expanded ? 1 : 0; compactHost.layer?.opacity = expanded ? 0 : 1
-        expandedHost.isHidden = !expanded; compactHost.isHidden = expanded
+        for (host, state) in [(expandedHost, IslandPresentation.workspace), (compactHost, .ambient), (peekHost, .peek)] {
+            host.layer?.removeAllAnimations(); host.layer?.opacity = state == presentation ? 1 : 0
+            host.isHidden = state != presentation
+        }
+        railHost.layer?.removeAllAnimations(); railHost.isHidden = railHost.layer?.opacity == 0
         CATransaction.commit()
     }
     func updateAppearance(expanded: Bool, hasNotch: Bool, preferences: AppPreferences, dropTarget: Bool? = nil) {
         if let dropTarget { self.dropTarget = dropTarget }
         CATransaction.begin(); CATransaction.setDisableActions(true)
-        backdrop.isHidden = !expanded || preferences.blur == 0 || preferences.energySaving
-        backdrop.alphaValue = preferences.blur
-        tint.layer?.backgroundColor = NSColor.black.withAlphaComponent(expanded ? preferences.opacity : 1).cgColor
-        borderLayer.lineWidth = self.dropTarget ? 2 : 1
-        borderLayer.strokeColor = self.dropTarget ? NSColor(preferences.accent.color).cgColor : preferences.border && !hasNotch ? NSColor.white.withAlphaComponent(0.10).cgColor : nil
+        backdrop.configure(preferences, active: expanded, radius: expanded ? preferences.cornerRadius : 14)
+        let policy = NexaGlassEnvironment(preferences: preferences, nativeAvailable: true, reduceTransparency: NexaAccessibility.reduceTransparency, increaseContrast: NexaAccessibility.increaseContrast)
+        borderLayer.lineWidth = self.dropTarget || NexaAccessibility.increaseContrast ? 2 : 1
+        borderLayer.strokeColor = self.dropTarget ? NSColor(preferences.accent.color).cgColor : NSColor.white.withAlphaComponent(expanded || !hasNotch ? policy.borderAlpha : 0).cgColor
         CATransaction.commit()
     }
     private func animateOpacity(_ layer: CALayer, to opacity: Float, duration: Double, delay: Double) {

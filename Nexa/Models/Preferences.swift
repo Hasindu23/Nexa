@@ -2,17 +2,17 @@ import SwiftUI
 import Combine
 
 enum ModuleID: String, CaseIterable, Codable, Identifiable {
-    case home, music, files, notes, todos, shortcuts, mirror, clipboard, calendar, reminders, timers, controls, system, storage, bluetooth, weather, ai
+    case home, music, files, notes, todos, shortcuts, mirror, clipboard, calendar, reminders, timers, controls, system, storage, bluetooth, weather, ai, live
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .home: return "Home"
+        case .home: return "Nexa"
         case .notes: return "Notes"
-        case .todos: return "To-dos"
+        case .todos: return "Tasks"
         case .shortcuts: return "Shortcuts"
         case .mirror: return "Mirror"
-        case .music: return "Now Playing"
-        case .files: return "File Shelf"
+        case .music: return "Music"
+        case .files: return "Files"
         case .clipboard: return "Clipboard"
         case .calendar: return "Calendar"
         case .reminders: return "Reminders"
@@ -22,7 +22,8 @@ enum ModuleID: String, CaseIterable, Codable, Identifiable {
         case .storage: return "Storage Cleaner"
         case .bluetooth: return "Bluetooth"
         case .weather: return "Weather"
-        case .ai: return "Assistant"
+        case .ai: return "AI"
+        case .live: return "Live"
         }
     }
     var icon: String {
@@ -44,6 +45,7 @@ enum ModuleID: String, CaseIterable, Codable, Identifiable {
         case .bluetooth: return "headphones"
         case .weather: return "cloud.sun"
         case .ai: return "sparkles"
+        case .live: return "bolt.horizontal.circle"
         }
     }
 }
@@ -74,6 +76,22 @@ enum VisualizerStyle: String, Codable, CaseIterable, Identifiable {
 }
 
 struct AppPreferences: Codable, Equatable {
+    var workspaceRevision = 1
+    var workspaceShortcuts: [WorkspaceShortcut] = []
+    var appearanceMode = NexaAppearance.liquidGlass
+    var glassStyle = NexaGlassStyle.balanced
+    var glassTintStrength = 0.35
+    var blueReflection = true
+    var specularHighlight = true
+    var interactiveGlass = true
+    var showWorkspaceRail = true
+    var rememberWorkspace = false
+    var defaultWorkspace = ModuleID.home
+    var lastWorkspace = ModuleID.home
+    var railModules: [ModuleID] = [.home, .music, .calendar, .files, .todos, .ai, .live]
+    var homeWidgets = HomeWidget.defaults
+    var swipeGestures = true
+    var enabledDisplayIDs: [String] = []
     var completedOnboarding = false
     var showMenuBar = true
     var hoverToOpen = true
@@ -123,11 +141,12 @@ struct AppPreferences: Codable, Equatable {
     var repositoryURL = "https://github.com/Hasindu23/Nexa"
     var updateFeedURL = "https://raw.githubusercontent.com/Hasindu23/Nexa/main/release.json"
     var expandedWidth: CGFloat { layout == "Compact" ? 660 : layout == "Large" ? 820 : 740 }
-    var homeHeight: CGFloat { layout == "Compact" ? 192 : layout == "Large" ? 230 : 208 }
-    var expandedHeight: CGFloat { layout == "Compact" ? 370 : layout == "Large" ? 460 : 414 }
+    var homeHeight: CGFloat { expandedHeight }
+    var expandedHeight: CGFloat { layout == "Compact" ? 390 : layout == "Large" ? 490 : 440 }
 }
 
 @MainActor final class PreferencesStore: ObservableObject {
+    @Published var recordingShortcut = false
     @Published var value: AppPreferences { didSet { persist() } }
     let defaults: UserDefaults
     init(defaults: UserDefaults = .standard) {
@@ -140,7 +159,35 @@ struct AppPreferences: Codable, Equatable {
         // preferences, permissions, and module choices during decoding.
         if let raw = merged["motionPreset"] as? String, MotionPreset(rawValue: raw) == nil { merged["motionPreset"] = base["motionPreset"] }
         if let raw = merged["visualizerStyle"] as? String, VisualizerStyle(rawValue: raw) == nil { merged["visualizerStyle"] = base["visualizerStyle"] }
-        for (key, range) in [("animationSpeed", 0.5...2.0), ("visualizerBrightness", 0.1...1.0), ("glowIntensity", 0.0...1.0)] {
+        for (key, known) in [
+            ("appearanceMode", Set(NexaAppearance.allCases.map(\.rawValue))),
+            ("glassStyle", Set(NexaGlassStyle.allCases.map(\.rawValue))),
+            ("defaultWorkspace", Set(ModuleID.allCases.map(\.rawValue))),
+            ("lastWorkspace", Set(ModuleID.allCases.map(\.rawValue)))
+        ] { if let raw = merged[key] as? String, !known.contains(raw) { merged[key] = base[key] } }
+        if let rail = merged["railModules"] as? [String] {
+            var seen = Set<String>()
+            merged["railModules"] = rail.filter { ModuleID(rawValue: $0) != nil && seen.insert($0).inserted }
+        }
+        if let widgets = merged["homeWidgets"] as? [[String: Any]] {
+            var seen = Set<String>()
+            merged["homeWidgets"] = Array(widgets.compactMap { raw -> [String: Any]? in
+                guard let module = raw["module"] as? String, ModuleID(rawValue: module) != nil, seen.insert(module).inserted else { return nil }
+                let size = (raw["size"] as? String).flatMap(HomeWidget.Size.init(rawValue:)) ?? .regular
+                return ["module": module, "size": size.rawValue]
+            }.prefix(8))
+        } else { merged["homeWidgets"] = base["homeWidgets"] }
+        if let shortcuts = merged["workspaceShortcuts"] as? [[String: Any]] {
+            var actions = Set<String>()
+            merged["workspaceShortcuts"] = shortcuts.filter { raw in
+                guard let action = raw["action"] as? String, WorkspaceAction(rawValue: action) != nil,
+                      let code = raw["keyCode"] as? Int, (0...127).contains(code),
+                      let modifiers = raw["modifiers"] as? Int, (0...65535).contains(modifiers),
+                      raw["label"] is String else { return false }
+                return actions.insert(action).inserted
+            }
+        } else { merged["workspaceShortcuts"] = [] }
+        for (key, range) in [("animationSpeed", 0.5...2.0), ("visualizerBrightness", 0.1...1.0), ("glowIntensity", 0.0...1.0), ("glassTintStrength", 0.0...1.0)] {
             if let number = merged[key] as? Double { merged[key] = number.isFinite ? min(range.upperBound, max(range.lowerBound, number)) : base[key] }
         }
         for key in ["repositoryURL", "updateFeedURL"] where saved[key] as? String == "" { merged[key] = base[key] }
@@ -150,8 +197,15 @@ struct AppPreferences: Codable, Equatable {
             if saved["collapseDelay"] as? Double == 0.65 { merged["collapseDelay"] = 0.42 }
         }
         if let modules = saved["enabledModules"] as? [String] {
-            let newModules = saved["centerWidget"] == nil ? ["home", "mirror", "notes", "todos", "shortcuts"] : ["home"]
+            let newModules = saved["centerWidget"] == nil ? ["home", "mirror", "notes", "todos", "shortcuts"] : saved["workspaceRevision"] == nil ? ["home", "live"] : ["home"]
             merged["enabledModules"] = Array(Set(modules.filter { ModuleID(rawValue: $0) != nil } + newModules))
+        }
+        if saved["homeWidgets"] == nil, let center = saved["centerWidget"] as? String {
+            let migrated: ModuleID = ["Calendar": .calendar, "Shortcuts": .shortcuts, "Notes": .notes, "To-dos": .todos, "Timer": .timers][center] ?? .calendar
+            var widgets = HomeWidget.defaults
+            if let index = widgets.firstIndex(where: { $0.module == .calendar }) { widgets[index].module = migrated }
+            var seen = Set<ModuleID>(); widgets = widgets.filter { seen.insert($0.module).inserted }
+            merged["homeWidgets"] = (try? JSONEncoder().encode(widgets)).flatMap { try? JSONSerialization.jsonObject(with: $0) }
         }
         value = (try? JSONSerialization.data(withJSONObject: merged)).flatMap { try? JSONDecoder().decode(AppPreferences.self, from: $0) } ?? AppPreferences()
     }

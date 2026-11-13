@@ -6,11 +6,12 @@ import SwiftUI
     @Published private(set) var running: String?
     @Published var error: String?
     private let store: LocalStore
+    private let testing: Bool
     private var listing = false
     private var process: Process?
-    init(store: LocalStore) { self.store = store; favorites = store.read([String].self, name: "shortcuts.json") ?? [] }
+    init(store: LocalStore, testing: Bool = false) { self.store = store; self.testing = testing; favorites = store.read([String].self, name: "shortcuts.json") ?? [] }
     func refresh() {
-        guard !listing else { return }; listing = true
+        guard !testing, !listing else { return }; listing = true
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let task = Process(), pipe = Pipe(); task.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts"); task.arguments = ["list"]; task.standardOutput = pipe; task.standardError = FileHandle.nullDevice
             do {
@@ -24,7 +25,7 @@ import SwiftUI
     }
     func pin(_ name: String) { if favorites.contains(name) { favorites.removeAll { $0 == name } } else { favorites.append(name) }; do { try store.write(favorites, name: "shortcuts.json") } catch { self.error = error.localizedDescription } }
     func run(_ name: String) {
-        guard running == nil else { return }
+        guard !testing, running == nil else { return }
         let task = Process(); task.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts"); task.arguments = ["run", name]
         task.standardOutput = FileHandle.nullDevice; task.standardError = FileHandle.nullDevice
         task.terminationHandler = { [weak self] task in Task { @MainActor in self?.running = nil; self?.process = nil; if task.terminationStatus != 0 { self?.error = "The shortcut stopped or needs attention in Shortcuts." } } }
