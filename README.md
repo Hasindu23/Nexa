@@ -2,6 +2,8 @@
 
 **A little more space.** An original native macOS notch companion built with Swift, SwiftUI and AppKit. No Electron, accounts, analytics, license checks or runtime downloads.
 
+Version **3.2.1 — Wide Electric Blue Visualizer** adds a full-width blue bar animation and mirrored reflection below the Music controls. It remains decorative and stops when paused, hidden, or in Reduce Motion/Energy Saving. See the [3.2.1 release notes](Documentation/RELEASE-3.2.1.md).
+
 Version **3.2.0 — Liquid Glass Workspace** adds Ambient, Peek and Workspace states, native glass with a macOS 15 fallback, a persistent floating rail, customizable Home widgets, a month Calendar, richer local Tasks, and real Nexa Live Activities. It preserves the storage and memory safety logic. See the [3.2 release notes and validation](Documentation/RELEASE-3.2.md).
 
 Version **3.1.0 — Fluid Motion & Electric Blue** upgrades the existing island with continuous spring motion, three decorative blue visualizer styles, optional ambient glow, and persistent Appearance & Motion settings. Existing modules, saved data and preferences remain included. See the [3.1 release notes and validation](Documentation/RELEASE-3.1.md).
@@ -26,7 +28,7 @@ The Storage Cleaner screenshot is rendered by the running app using generated QA
 
 ## Start using it
 
-1. Quit any older running Nexa, open the supplied **Nexa-3.2.0.dmg**, drag **Nexa** to **Applications**, then open it.
+1. Quit any older running Nexa, open the supplied **Nexa-3.2.1.dmg**, drag **Nexa** to **Applications**, then open it.
 2. Follow the welcome flow or select **Set up later**. No private-data permission is requested automatically.
 3. Hover over or click the top-center notch. On a Mac without a notch, use the top pill.
 4. Use the waveform menu bar icon for Open Nexa, Pause, Keep Awake, Settings and Quit.

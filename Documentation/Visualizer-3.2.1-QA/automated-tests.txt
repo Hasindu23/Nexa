@@ -1,0 +1,6 @@
+Nexa 3.2.1 build 13
+114 tests passed, 0 failures.
+The existing visualizer lifecycle test now exercises both compact and wide presentations: play, pause, hide/show, energy saving, Reduce Motion, occlusion and removal.
+Result bundle: /tmp/Nexa32Build/Logs/Test/Test-Nexa-2026.11.16_23-08-51--0500.xcresult
+Release: universal arm64/x86_64, built from the identical source in /tmp/Nexa321Source to avoid cloud-managed source delays.
+No new compiler warnings. Apple emits the existing unused AppIntents metadata warning.

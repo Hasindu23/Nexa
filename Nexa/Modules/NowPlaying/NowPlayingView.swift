@@ -47,6 +47,9 @@ struct NowPlayingView: View {
                     Spacer()
                     Text(service.demo ? "DEMO" : service.track.playing ? "PLAYING" : "PAUSED").font(.system(size: 8, weight: .semibold)).tracking(1.2).foregroundStyle(NexaStyle.secondary).frame(width: 90, alignment: .trailing)
                 }.disabled(service.demo)
+                PlaybackSpectrum(playing: service.track.playing, preferences: preferences)
+                    .frame(height: max(64, min(112, preferences.value.expandedHeight - 362)))
+                    .padding(.top, 3)
             } else {
                 HStack(spacing: 10) {
                     Image(systemName: "lock.shield").foregroundStyle(accent.opacity(0.8))

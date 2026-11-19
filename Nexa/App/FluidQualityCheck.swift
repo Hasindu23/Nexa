@@ -32,12 +32,20 @@ extension AppDelegate {
                     try snapshot(notch.window!, to: output.appendingPathComponent("visualizer-\(style.rawValue).png"))
                 }
                 checks.append("PASS: Bars, Wave and Minimal render in the native Now Playing module with labeled sample media")
+                guard let spectrum = Self.fluidRenderers(in: notch.window!.contentView!).first(where: { $0.configuration.presentation == .spectrum }),
+                      spectrum.bars.count >= 24, spectrum.reflectedBars.count == spectrum.bars.count,
+                      spectrum.visibleRect.height >= spectrum.bounds.height - 1 else {
+                    throw NexaError.message("The blue spectrum or its reflection is missing or clipped")
+                }
+                checks.append("PASS: the wide blue spectrum and reflection fit below Music controls")
                 model.media.loadDemo(playing: false)
                 try await Task.sleep(for: .milliseconds(300))
                 guard Self.fluidRenderers(in: notch.window!.contentView!).allSatisfy({ $0.repeatingAnimationCount == 0 }) else { throw NexaError.message("Paused visualizer still has repeating animations") }
+                try snapshot(notch.window!, to: output.appendingPathComponent("spectrum-paused.png"))
                 model.media.loadDemo(playing: true); model.preferences.value.energySaving = true
                 try await Task.sleep(for: .milliseconds(300))
                 guard Self.fluidRenderers(in: notch.window!.contentView!).allSatisfy({ $0.repeatingAnimationCount == 0 }) else { throw NexaError.message("Energy-saving mode did not stop animations") }
+                try snapshot(notch.window!, to: output.appendingPathComponent("spectrum-energy-saving.png"))
                 model.preferences.value.energySaving = false
                 checks.append("PASS: actual native visualizers stop all repeating animations on pause and in energy-saving mode")
                 for preset in MotionPreset.allCases {

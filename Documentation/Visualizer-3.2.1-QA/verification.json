@@ -1,0 +1,43 @@
+{
+  "version": "3.2.1",
+  "build": 13,
+  "automatedTests": 114,
+  "failures": 0,
+  "visualizerLifecycle": "pause, hide, occlusion, removal, Reduce Motion and Energy Saving passed for compact and wide renderers",
+  "nativeFluidQA": "passed",
+  "wideVisualizerAndReflectionVisible": "passed",
+  "architectures": [
+    "x86_64",
+    "arm64"
+  ],
+  "signature": "passed",
+  "appleNotarized": false,
+  "dmgIntegrity": "passed",
+  "dmgSHA256": "64684f29d700270f4721f361851d4d809d9b7efd31d7450a36cd2d9eb3c2684c",
+  "mountedAndInstalledFilesMatchRelease": true,
+  "existingPreferencesPreserved": true,
+  "notesTasksStoragePreserved": true,
+  "navigationStateMayChange": "lastWorkspace tracks ordinary navigation",
+  "iconLaunch": [
+    {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 50909,
+      "version": "3.2.1"
+    }
+  ],
+  "repeatLaunch": [
+    {
+      "finished": true,
+      "hidden": false,
+      "mainWindows": 1,
+      "path": "/Applications/Nexa.app",
+      "pid": 50909,
+      "version": "3.2.1"
+    }
+  ],
+  "backup": "/Users/hasindu/Documents/Codex/2026-09-17/storage-cleaner-system-cleanup-module-add/work/backups/Nexa-3.2.0-before-3.2.1-b423b4e6.zip",
+  "userFilesCleaned": false
+}
